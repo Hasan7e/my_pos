@@ -171,7 +171,33 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('MyPOS - Sales Dashboard'),
+        toolbarHeight: 72,
+        leadingWidth: 320,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: Row(
+            children: [
+              TextButton(
+                onPressed: () => _showActionMessage('Settings'),
+                child: const Text('Settings'),
+              ),
+              TextButton(
+                onPressed: () => _requireLoginThenRun(
+                  () => _showActionMessage('Manage Products'),
+                ),
+                child: const Text('Manage Products'),
+              ),
+              TextButton(
+                onPressed: () => _requireLoginThenRun(
+                  () => _showActionMessage('Quick Sale'),
+                ),
+                child: const Text('Quick Sale'),
+              ),
+            ],
+          ),
+        ),
+        centerTitle: true,
+        title: const Text('MyPOS-Store'),
         actions: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -200,6 +226,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
           ),
         ],
       ),
+
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: isWide
