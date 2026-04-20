@@ -29,9 +29,120 @@ class SalesDashboardPage extends StatefulWidget {
   State<SalesDashboardPage> createState() => _SalesDashboardPageState();
 }
 
+class KeypadButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  final bool isAccent;
+
+  const KeypadButton({
+    super.key,
+    required this.label,
+    required this.onTap,
+    this.isAccent = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: isAccent
+          ? Theme.of(context).colorScheme.primaryContainer
+          : Theme.of(context).colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Center(
+          child: Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ActionButton extends StatelessWidget {
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  final bool isLarge;
+
+  const ActionButton({
+    super.key,
+    required this.label,
+    required this.color,
+    required this.onTap,
+    this.isLarge = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.expand(
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(
+            vertical: isLarge ? 18 : 14,
+            horizontal: 12,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: isLarge ? 20 : 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProductTile extends StatelessWidget {
+  final String name;
+  final double price;
+
+  const _ProductTile({required this.name, required this.price});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 0,
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
+            Text('€${price.toStringAsFixed(2)}'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LoginResult {
+  final String username;
+  final String password;
+
+  _LoginResult({required this.username, required this.password});
+}
+
 class _SalesDashboardPageState extends State<SalesDashboardPage> {
   bool _isLoggedIn = false;
   String _loggedInUser = '';
+  String _currentInput = '';
 
   Future<void> _showLoginDialog() async {
     final usernameController = TextEditingController();
@@ -91,12 +202,9 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('Cancel'),
             ),
-
-            // 👇 ADD THIS BUTTON HERE
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // close login dialog
-
+                Navigator.of(context).pop();
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const SignupPage()),
@@ -104,7 +212,6 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
               },
               child: const Text('Create Account'),
             ),
-
             FilledButton(
               onPressed: () {
                 if (formKey.currentState!.validate()) {
@@ -164,38 +271,90 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     ).showSnackBar(SnackBar(content: Text('$actionName action opened')));
   }
 
+  void _appendInput(String value) {
+    setState(() {
+      if (value == '.') {
+        if (_currentInput.contains('.')) return;
+        if (_currentInput.isEmpty) {
+          _currentInput = '0.';
+          return;
+        }
+      }
+      _currentInput += value;
+    });
+  }
+
+  void _backspaceInput() {
+    if (_currentInput.isEmpty) return;
+
+    setState(() {
+      _currentInput = _currentInput.substring(0, _currentInput.length - 1);
+    });
+  }
+
+  void _clearInput() {
+    setState(() {
+      _currentInput = '';
+    });
+  }
+
+  void _cancelInput() {
+    setState(() {
+      _currentInput = '';
+    });
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Transaction cancelled')));
+  }
+
+  void _setCashNote(String value) {
+    setState(() {
+      _currentInput = value;
+    });
+  }
+
+  bool get _hasAmount {
+    return _currentInput.isNotEmpty &&
+        _currentInput != '.' &&
+        double.tryParse(_currentInput) != null;
+  }
+
+  String get _displayValue {
+    return _currentInput.isEmpty ? '0.00' : _currentInput;
+  }
+
+  void _handleSale() {
+    final amount = _hasAmount ? _currentInput : '0.00';
+    debugPrint('sale processed with amount $amount');
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Sale processed: €$amount')));
+  }
+
+  void _handleCard() {
+    final amount = _hasAmount ? _currentInput : '0.00';
+    debugPrint('paid by card: $amount');
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Paid by card: €$amount')));
+  }
+
+  void _handleCash() {
+    final amount = _hasAmount ? _currentInput : '0.00';
+    debugPrint('paid by cash: $amount');
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Paid by cash: €$amount')));
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final isWide = screenWidth >= 900;
+    final showSideBySide = screenWidth >= 900;
 
     return Scaffold(
       appBar: AppBar(
-        toolbarHeight: 72,
-        leadingWidth: 320,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 12),
-          child: Row(
-            children: [
-              TextButton(
-                onPressed: () => _showActionMessage('Settings'),
-                child: const Text('Settings'),
-              ),
-              TextButton(
-                onPressed: () => _requireLoginThenRun(
-                  () => _showActionMessage('Manage Products'),
-                ),
-                child: const Text('Manage Products'),
-              ),
-              TextButton(
-                onPressed: () => _requireLoginThenRun(
-                  () => _showActionMessage('Quick Sale'),
-                ),
-                child: const Text('Quick Sale'),
-              ),
-            ],
-          ),
-        ),
         centerTitle: true,
         title: const Text('MyPOS-Store'),
         actions: [
@@ -226,23 +385,22 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
           ),
         ],
       ),
-
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: isWide
+        child: showSideBySide
             ? Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(flex: 2, child: _buildSalesPanel()),
+                  Expanded(flex: 7, child: _buildSalesPanel()),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildCartPanel()),
+                  Expanded(flex: 3, child: _buildPosKeypadPanel()),
                 ],
               )
             : Column(
                 children: [
                   _buildSalesPanel(),
                   const SizedBox(height: 16),
-                  _buildCartPanel(),
+                  _buildPosKeypadPanel(),
                 ],
               ),
       ),
@@ -256,7 +414,10 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Sales', style: Theme.of(context).textTheme.headlineSmall),
+            Text(
+              'Sales Dashboard',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
             const SizedBox(height: 8),
             Text(
               _isLoggedIn
@@ -277,17 +438,17 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
                 ),
                 OutlinedButton.icon(
                   onPressed: () => _requireLoginThenRun(
-                    () => _showActionMessage('Add Item'),
+                    () => _showActionMessage('Manage Products'),
                   ),
-                  icon: const Icon(Icons.add_shopping_cart),
-                  label: const Text('Add Item'),
+                  icon: const Icon(Icons.inventory_2_outlined),
+                  label: const Text('Manage Products'),
                 ),
                 OutlinedButton.icon(
                   onPressed: () => _requireLoginThenRun(
-                    () => _showActionMessage('Checkout'),
+                    () => _showActionMessage('Quick Sale'),
                   ),
-                  icon: const Icon(Icons.payment),
-                  label: const Text('Checkout'),
+                  icon: const Icon(Icons.flash_on_outlined),
+                  label: const Text('Quick Sale'),
                 ),
               ],
             ),
@@ -316,44 +477,190 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     );
   }
 
-  Widget _buildCartPanel() {
+  Widget _buildPosKeypadPanel() {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Current Sale',
-              style: Theme.of(context).textTheme.headlineSmall,
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('Amount', style: Theme.of(context).textTheme.labelLarge),
+                  const SizedBox(height: 8),
+                  Text(
+                    _displayValue,
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            const ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text('Coffee'),
-              trailing: Text('€3.50'),
-            ),
-            const ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text('Tea'),
-              trailing: Text('€2.80'),
-            ),
-            const Divider(),
-            const SizedBox(height: 8),
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Total', style: TextStyle(fontWeight: FontWeight.bold)),
-                Text('€6.30', style: TextStyle(fontWeight: FontWeight.bold)),
-              ],
+            const SizedBox(height: 16),
+            Expanded(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Column(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: GridView.count(
+                            crossAxisCount: 3,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
+                            childAspectRatio: 1.15,
+                            physics: const NeverScrollableScrollPhysics(),
+                            children: [
+                              KeypadButton(
+                                label: '7',
+                                onTap: () => _appendInput('7'),
+                              ),
+                              KeypadButton(
+                                label: '8',
+                                onTap: () => _appendInput('8'),
+                              ),
+                              KeypadButton(
+                                label: '9',
+                                onTap: () => _appendInput('9'),
+                              ),
+                              KeypadButton(
+                                label: '4',
+                                onTap: () => _appendInput('4'),
+                              ),
+                              KeypadButton(
+                                label: '5',
+                                onTap: () => _appendInput('5'),
+                              ),
+                              KeypadButton(
+                                label: '6',
+                                onTap: () => _appendInput('6'),
+                              ),
+                              KeypadButton(
+                                label: '1',
+                                onTap: () => _appendInput('1'),
+                              ),
+                              KeypadButton(
+                                label: '2',
+                                onTap: () => _appendInput('2'),
+                              ),
+                              KeypadButton(
+                                label: '3',
+                                onTap: () => _appendInput('3'),
+                              ),
+                              KeypadButton(
+                                label: '.',
+                                onTap: () => _appendInput('.'),
+                              ),
+                              KeypadButton(
+                                label: '0',
+                                onTap: () => _appendInput('0'),
+                              ),
+                              KeypadButton(
+                                label: '⌫',
+                                onTap: _backspaceInput,
+                                isAccent: true,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Expanded(
+                          flex: 2,
+                          child: GridView.count(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
+                            childAspectRatio: 1.4,
+                            physics: const NeverScrollableScrollPhysics(),
+                            children: [
+                              ActionButton(
+                                label: '10',
+                                color: Colors.teal,
+                                onTap: () => _setCashNote('10'),
+                              ),
+                              ActionButton(
+                                label: '20',
+                                color: Colors.teal,
+                                onTap: () => _setCashNote('20'),
+                              ),
+                              ActionButton(
+                                label: '50',
+                                color: Colors.teal,
+                                onTap: () => _setCashNote('50'),
+                              ),
+                              ActionButton(
+                                label: '100',
+                                color: Colors.teal,
+                                onTap: () => _setCashNote('100'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      children: [
+                        Expanded(
+                          child: ActionButton(
+                            label: 'SALE',
+                            color: Colors.blueGrey,
+                            onTap: _handleSale,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Expanded(
+                          child: ActionButton(
+                            label: 'CARD',
+                            color: Colors.indigo,
+                            onTap: _handleCard,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Expanded(
+                          child: ActionButton(
+                            label: 'CLEAR',
+                            color: Colors.orange,
+                            onTap: _clearInput,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Expanded(
+                          child: ActionButton(
+                            label: 'CANCEL',
+                            color: Colors.redAccent,
+                            onTap: _cancelInput,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
-              child: FilledButton(
-                onPressed: () =>
-                    _requireLoginThenRun(() => _showActionMessage('Checkout')),
-                child: const Text('Proceed to Checkout'),
+              height: 64,
+              child: ActionButton(
+                label: 'CASH',
+                color: Colors.green,
+                onTap: _handleCash,
+                isLarge: true,
               ),
             ),
           ],
@@ -361,36 +668,4 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
       ),
     );
   }
-}
-
-class _ProductTile extends StatelessWidget {
-  final String name;
-  final double price;
-
-  const _ProductTile({required this.name, required this.price});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
-            Text('€${price.toStringAsFixed(2)}'),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LoginResult {
-  final String username;
-  final String password;
-
-  _LoginResult({required this.username, required this.password});
 }
