@@ -38,17 +38,13 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
   final TextEditingController _barcodeController = TextEditingController();
 
   final Map<String, ProductData> _barcodeCatalog = {
-    '1001': ProductData(name: 'Coffee', price: 3.50),
-    '1002': ProductData(name: 'Tea', price: 2.80),
-    '1003': ProductData(name: 'Sandwich', price: 5.20),
-    '1004': ProductData(name: 'Milk', price: 1.90),
+    '1001': const ProductData(name: 'Coffee', price: 3.50),
+    '1002': const ProductData(name: 'Tea', price: 2.80),
+    '1003': const ProductData(name: 'Sandwich', price: 5.20),
+    '1004': const ProductData(name: 'Milk', price: 1.90),
   };
 
-  final List<CartItem> cart = [
-    CartItem(name: 'Coffee', price: 3.50, quantity: 2),
-    CartItem(name: 'Tea', price: 2.80, quantity: 1),
-    CartItem(name: 'Sandwich', price: 5.20, quantity: 1),
-  ];
+  final List<CartItem> cart = [];
 
   @override
   void dispose() {
@@ -204,14 +200,43 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     });
   }
 
-  void _cancelInput() {
+  Future<void> _cancelSale() async {
+    final shouldCancel = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Cancel Transaction'),
+          content: const Text(
+            'Are you sure you want to cancel this transaction? All items will be removed from the basket.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('No'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Yes, Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldCancel != true) return;
+
     setState(() {
       _currentInput = '';
+      _selectedCartIndex = null;
+      cart.clear();
+      _barcodeController.clear();
     });
+
+    if (!mounted) return;
 
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Transaction cancelled')));
+    ).showSnackBar(const SnackBar(content: Text('Sale cancelled')));
   }
 
   void _setCashNote(String value) {
@@ -315,20 +340,74 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     );
   }
 
-  void _handleCard() {
-    final amount = _hasAmount ? _currentInput : _cartTotal.toStringAsFixed(2);
-    debugPrint('paid by card: $amount');
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Paid by card: €$amount')));
+  Future<void> _offerReceipt(String paymentMethod, double total) async {
+    final shouldPrint = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Print Receipt?'),
+          content: Text(
+            '$paymentMethod payment completed for €${total.toStringAsFixed(2)}.\nWould you like to print a receipt?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('No'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Print'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          shouldPrint == true
+              ? 'Printing receipt...'
+              : 'Sale completed without receipt',
+        ),
+      ),
+    );
   }
 
-  void _handleCash() {
-    final amount = _hasAmount ? _currentInput : _cartTotal.toStringAsFixed(2);
-    debugPrint('paid by cash: $amount');
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Paid by cash: €$amount')));
+  Future<void> _completeSale(String paymentMethod) async {
+    if (cart.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add items to the basket first')),
+      );
+      return;
+    }
+
+    final total = _cartTotal;
+
+    debugPrint(
+      'sale completed by $paymentMethod: €${total.toStringAsFixed(2)}',
+    );
+
+    setState(() {
+      cart.clear();
+      _currentInput = '';
+      _selectedCartIndex = null;
+      _barcodeController.clear();
+    });
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Sale completed by $paymentMethod: €${total.toStringAsFixed(2)}',
+        ),
+      ),
+    );
+
+    await _offerReceipt(paymentMethod, total);
   }
 
   @override
@@ -388,6 +467,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
                             onIncrease: _increaseQuantity,
                             onDecrease: _decreaseQuantity,
                             onDelete: _removeCartItem,
+                            onAddSampleItem: addItem,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -404,6 +484,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
                             onIncrease: _increaseQuantity,
                             onDecrease: _decreaseQuantity,
                             onDelete: _removeCartItem,
+                            onAddSampleItem: addItem,
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -602,7 +683,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
                           child: ActionButton(
                             label: 'CARD',
                             color: Colors.indigo,
-                            onTap: _handleCard,
+                            onTap: () => _completeSale('Card'),
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -618,7 +699,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
                           child: ActionButton(
                             label: 'CANCEL',
                             color: Colors.redAccent,
-                            onTap: _cancelInput,
+                            onTap: _cancelSale,
                           ),
                         ),
                       ],
@@ -634,7 +715,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
               child: ActionButton(
                 label: 'CASH',
                 color: Colors.green,
-                onTap: _handleCash,
+                onTap: () => _completeSale('Cash'),
                 isLarge: true,
               ),
             ),
@@ -747,6 +828,7 @@ class CartPanel extends StatelessWidget {
   final void Function(int index) onIncrease;
   final void Function(int index) onDecrease;
   final void Function(int index) onDelete;
+  final void Function(String name, double price) onAddSampleItem;
 
   const CartPanel({
     super.key,
@@ -756,6 +838,7 @@ class CartPanel extends StatelessWidget {
     required this.onIncrease,
     required this.onDecrease,
     required this.onDelete,
+    required this.onAddSampleItem,
   });
 
   @override
@@ -765,12 +848,33 @@ class CartPanel extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Cart',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Cart',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                ),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton(
+                      onPressed: () => onAddSampleItem('Coffee', 3.50),
+                      child: const Text('Add Coffee'),
+                    ),
+                    OutlinedButton(
+                      onPressed: () => onAddSampleItem('Tea', 2.80),
+                      child: const Text('Add Tea'),
+                    ),
+                    OutlinedButton(
+                      onPressed: () => onAddSampleItem('Sandwich', 5.20),
+                      child: const Text('Add Sandwich'),
+                    ),
+                  ],
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             Expanded(
