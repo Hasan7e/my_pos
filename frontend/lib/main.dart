@@ -29,120 +29,17 @@ class SalesDashboardPage extends StatefulWidget {
   State<SalesDashboardPage> createState() => _SalesDashboardPageState();
 }
 
-class KeypadButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-  final bool isAccent;
-
-  const KeypadButton({
-    super.key,
-    required this.label,
-    required this.onTap,
-    this.isAccent = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: isAccent
-          ? Theme.of(context).colorScheme.primaryContainer
-          : Theme.of(context).colorScheme.surfaceContainerHighest,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Center(
-          child: Text(
-            label,
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class ActionButton extends StatelessWidget {
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-  final bool isLarge;
-
-  const ActionButton({
-    super.key,
-    required this.label,
-    required this.color,
-    required this.onTap,
-    this.isLarge = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox.expand(
-      child: ElevatedButton(
-        onPressed: onTap,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          padding: EdgeInsets.symmetric(
-            vertical: isLarge ? 18 : 14,
-            horizontal: 12,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: isLarge ? 20 : 16,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ProductTile extends StatelessWidget {
-  final String name;
-  final double price;
-
-  const _ProductTile({required this.name, required this.price});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
-            Text('€${price.toStringAsFixed(2)}'),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LoginResult {
-  final String username;
-  final String password;
-
-  _LoginResult({required this.username, required this.password});
-}
-
 class _SalesDashboardPageState extends State<SalesDashboardPage> {
   bool _isLoggedIn = false;
   String _loggedInUser = '';
   String _currentInput = '';
+  int? _selectedCartIndex;
+
+  final List<CartItem> cart = [
+    CartItem(name: 'Coffee', price: 3.50, quantity: 2),
+    CartItem(name: 'Tea', price: 2.80, quantity: 1),
+    CartItem(name: 'Sandwich', price: 5.20, quantity: 1),
+  ];
 
   Future<void> _showLoginDialog() async {
     final usernameController = TextEditingController();
@@ -265,12 +162,6 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     ).showSnackBar(const SnackBar(content: Text('Logged out')));
   }
 
-  void _showActionMessage(String actionName) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('$actionName action opened')));
-  }
-
   void _appendInput(String value) {
     setState(() {
       if (value == '.') {
@@ -314,6 +205,51 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     });
   }
 
+  void addItem(String name, double price) {
+    setState(() {
+      final existingIndex = cart.indexWhere((item) => item.name == name);
+
+      if (existingIndex != -1) {
+        cart[existingIndex].quantity++;
+        _selectedCartIndex = existingIndex;
+      } else {
+        cart.add(CartItem(name: name, price: price, quantity: 1));
+        _selectedCartIndex = cart.length - 1;
+      }
+    });
+  }
+
+  void _increaseQuantity(int index) {
+    setState(() {
+      cart[index].quantity++;
+      _selectedCartIndex = index;
+    });
+  }
+
+  void _decreaseQuantity(int index) {
+    setState(() {
+      cart[index].quantity--;
+
+      if (cart[index].quantity <= 0) {
+        cart.removeAt(index);
+        _selectedCartIndex = null;
+      } else {
+        _selectedCartIndex = index;
+      }
+    });
+  }
+
+  void _removeCartItem(int index) {
+    setState(() {
+      cart.removeAt(index);
+      _selectedCartIndex = null;
+    });
+  }
+
+  double get _cartTotal {
+    return cart.fold(0, (sum, item) => sum + item.total);
+  }
+
   bool get _hasAmount {
     return _currentInput.isNotEmpty &&
         _currentInput != '.' &&
@@ -325,7 +261,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
   }
 
   void _handleSale() {
-    final amount = _hasAmount ? _currentInput : '0.00';
+    final amount = _hasAmount ? _currentInput : _cartTotal.toStringAsFixed(2);
     debugPrint('sale processed with amount $amount');
     ScaffoldMessenger.of(
       context,
@@ -333,7 +269,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
   }
 
   void _handleCard() {
-    final amount = _hasAmount ? _currentInput : '0.00';
+    final amount = _hasAmount ? _currentInput : _cartTotal.toStringAsFixed(2);
     debugPrint('paid by card: $amount');
     ScaffoldMessenger.of(
       context,
@@ -341,7 +277,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
   }
 
   void _handleCash() {
-    final amount = _hasAmount ? _currentInput : '0.00';
+    final amount = _hasAmount ? _currentInput : _cartTotal.toStringAsFixed(2);
     debugPrint('paid by cash: $amount');
     ScaffoldMessenger.of(
       context,
@@ -391,88 +327,39 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
             ? Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(flex: 7, child: _buildSalesPanel()),
+                  Expanded(
+                    flex: 7,
+                    child: CartPanel(
+                      cart: cart,
+                      total: _cartTotal,
+                      selectedIndex: _selectedCartIndex,
+                      onIncrease: _increaseQuantity,
+                      onDecrease: _decreaseQuantity,
+                      onDelete: _removeCartItem,
+                      onAddSampleItem: addItem,
+                    ),
+                  ),
                   const SizedBox(width: 16),
                   Expanded(flex: 3, child: _buildPosKeypadPanel()),
                 ],
               )
             : Column(
                 children: [
-                  _buildSalesPanel(),
+                  Expanded(
+                    child: CartPanel(
+                      cart: cart,
+                      total: _cartTotal,
+                      selectedIndex: _selectedCartIndex,
+                      onIncrease: _increaseQuantity,
+                      onDecrease: _decreaseQuantity,
+                      onDelete: _removeCartItem,
+                      onAddSampleItem: addItem,
+                    ),
+                  ),
                   const SizedBox(height: 16),
-                  _buildPosKeypadPanel(),
+                  SizedBox(height: 520, child: _buildPosKeypadPanel()),
                 ],
               ),
-      ),
-    );
-  }
-
-  Widget _buildSalesPanel() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Sales Dashboard',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _isLoggedIn
-                  ? 'You can start and process sales.'
-                  : 'Dashboard is visible, but selling actions require login.',
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 12,
-              runSpacing: 12,
-              children: [
-                FilledButton.icon(
-                  onPressed: () => _requireLoginThenRun(
-                    () => _showActionMessage('New Sale'),
-                  ),
-                  icon: const Icon(Icons.point_of_sale),
-                  label: const Text('New Sale'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => _requireLoginThenRun(
-                    () => _showActionMessage('Manage Products'),
-                  ),
-                  icon: const Icon(Icons.inventory_2_outlined),
-                  label: const Text('Manage Products'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => _requireLoginThenRun(
-                    () => _showActionMessage('Quick Sale'),
-                  ),
-                  icon: const Icon(Icons.flash_on_outlined),
-                  label: const Text('Quick Sale'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            const Divider(),
-            const SizedBox(height: 12),
-            Text('Products', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              physics: const NeverScrollableScrollPhysics(),
-              childAspectRatio: 2.2,
-              children: const [
-                _ProductTile(name: 'Coffee', price: 3.50),
-                _ProductTile(name: 'Tea', price: 2.80),
-                _ProductTile(name: 'Milk', price: 1.90),
-                _ProductTile(name: 'Sandwich', price: 5.20),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -668,4 +555,314 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
       ),
     );
   }
+}
+
+class KeypadButton extends StatelessWidget {
+  final String label;
+  final VoidCallback onTap;
+  final bool isAccent;
+
+  const KeypadButton({
+    super.key,
+    required this.label,
+    required this.onTap,
+    this.isAccent = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: isAccent
+          ? Theme.of(context).colorScheme.primaryContainer
+          : Theme.of(context).colorScheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Center(
+          child: Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ActionButton extends StatelessWidget {
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+  final bool isLarge;
+
+  const ActionButton({
+    super.key,
+    required this.label,
+    required this.color,
+    required this.onTap,
+    this.isLarge = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.expand(
+      child: ElevatedButton(
+        onPressed: onTap,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.symmetric(
+            vertical: isLarge ? 18 : 14,
+            horizontal: 12,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: isLarge ? 20 : 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class CartItem {
+  final String name;
+  final double price;
+  int quantity;
+
+  CartItem({required this.name, required this.price, required this.quantity});
+
+  double get total => price * quantity;
+}
+
+class CartPanel extends StatelessWidget {
+  final List<CartItem> cart;
+  final double total;
+  final int? selectedIndex;
+  final void Function(int index) onIncrease;
+  final void Function(int index) onDecrease;
+  final void Function(int index) onDelete;
+  final void Function(String name, double price) onAddSampleItem;
+
+  const CartPanel({
+    super.key,
+    required this.cart,
+    required this.total,
+    required this.selectedIndex,
+    required this.onIncrease,
+    required this.onDecrease,
+    required this.onDelete,
+    required this.onAddSampleItem,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Cart',
+                    style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                ),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton(
+                      onPressed: () => onAddSampleItem('Coffee', 3.50),
+                      child: const Text('Add Coffee'),
+                    ),
+                    OutlinedButton(
+                      onPressed: () => onAddSampleItem('Tea', 2.80),
+                      child: const Text('Add Tea'),
+                    ),
+                    OutlinedButton(
+                      onPressed: () => onAddSampleItem('Sandwich', 5.20),
+                      child: const Text('Add Sandwich'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: cart.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No items in cart',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: cart.length,
+                      itemBuilder: (context, index) {
+                        final item = cart[index];
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Dismissible(
+                            key: ValueKey('${item.name}-$index'),
+                            direction: DismissDirection.endToStart,
+                            onDismissed: (_) => onDelete(index),
+                            background: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.redAccent,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                              ),
+                              child: const Icon(
+                                Icons.delete,
+                                color: Colors.white,
+                              ),
+                            ),
+                            child: CartItemTile(
+                              item: item,
+                              isSelected: selectedIndex == index,
+                              onIncrease: () => onIncrease(index),
+                              onDecrease: () => onDecrease(index),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Total',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '€${total.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class CartItemTile extends StatelessWidget {
+  final CartItem item;
+  final bool isSelected;
+  final VoidCallback onIncrease;
+  final VoidCallback onDecrease;
+
+  const CartItemTile({
+    super.key,
+    required this.item,
+    required this.isSelected,
+    required this.onIncrease,
+    required this.onDecrease,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isSelected
+            ? Theme.of(context).colorScheme.primaryContainer
+            : Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 4,
+            child: Text(
+              item.name,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                IconButton(
+                  onPressed: onDecrease,
+                  icon: const Icon(Icons.remove_circle_outline),
+                ),
+                Text(
+                  '${item.quantity}',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                IconButton(
+                  onPressed: onIncrease,
+                  icon: const Icon(Icons.add_circle_outline),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                '€${item.total.toStringAsFixed(2)}',
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoginResult {
+  final String username;
+  final String password;
+
+  _LoginResult({required this.username, required this.password});
 }
