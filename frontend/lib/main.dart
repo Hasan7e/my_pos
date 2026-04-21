@@ -35,11 +35,26 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
   String _currentInput = '';
   int? _selectedCartIndex;
 
+  final TextEditingController _barcodeController = TextEditingController();
+
+  final Map<String, ProductData> _barcodeCatalog = {
+    '1001': ProductData(name: 'Coffee', price: 3.50),
+    '1002': ProductData(name: 'Tea', price: 2.80),
+    '1003': ProductData(name: 'Sandwich', price: 5.20),
+    '1004': ProductData(name: 'Milk', price: 1.90),
+  };
+
   final List<CartItem> cart = [
     CartItem(name: 'Coffee', price: 3.50, quantity: 2),
     CartItem(name: 'Tea', price: 2.80, quantity: 1),
     CartItem(name: 'Sandwich', price: 5.20, quantity: 1),
   ];
+
+  @override
+  void dispose() {
+    _barcodeController.dispose();
+    super.dispose();
+  }
 
   Future<void> _showLoginDialog() async {
     final usernameController = TextEditingController();
@@ -207,7 +222,9 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
 
   void addItem(String name, double price) {
     setState(() {
-      final existingIndex = cart.indexWhere((item) => item.name == name);
+      final existingIndex = cart.indexWhere(
+        (item) => item.name == name && item.price == price,
+      );
 
       if (existingIndex != -1) {
         cart[existingIndex].quantity++;
@@ -246,6 +263,25 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     });
   }
 
+  void _handleBarcodeSubmitted(String rawBarcode) {
+    final barcode = rawBarcode.trim();
+    if (barcode.isEmpty) return;
+
+    final matchedProduct = _barcodeCatalog[barcode];
+
+    if (matchedProduct != null) {
+      addItem(matchedProduct.name, matchedProduct.price);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Scanned ${matchedProduct.name}')));
+    } else {
+      addItem('Barcode Item $barcode', 0.00);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Unknown barcode: $barcode added')),
+      );
+    }
+  }
+
   double get _cartTotal {
     return cart.fold(0, (sum, item) => sum + item.total);
   }
@@ -260,12 +296,23 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     return _currentInput.isEmpty ? '0.00' : _currentInput;
   }
 
-  void _handleSale() {
-    final amount = _hasAmount ? _currentInput : _cartTotal.toStringAsFixed(2);
-    debugPrint('sale processed with amount $amount');
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Sale processed: €$amount')));
+  void _handleTender() {
+    final amount = double.tryParse(_currentInput);
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a valid amount first')),
+      );
+      return;
+    }
+
+    addItem('Open Item', amount);
+    setState(() {
+      _currentInput = '';
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Open Item added: €${amount.toStringAsFixed(2)}')),
+    );
   }
 
   void _handleCard() {
@@ -323,43 +370,84 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: showSideBySide
-            ? Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 7,
-                    child: CartPanel(
-                      cart: cart,
-                      total: _cartTotal,
-                      selectedIndex: _selectedCartIndex,
-                      onIncrease: _increaseQuantity,
-                      onDecrease: _decreaseQuantity,
-                      onDelete: _removeCartItem,
-                      onAddSampleItem: addItem,
+        child: Column(
+          children: [
+            _buildBarcodeEntry(),
+            const SizedBox(height: 16),
+            Expanded(
+              child: showSideBySide
+                  ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 7,
+                          child: CartPanel(
+                            cart: cart,
+                            total: _cartTotal,
+                            selectedIndex: _selectedCartIndex,
+                            onIncrease: _increaseQuantity,
+                            onDecrease: _decreaseQuantity,
+                            onDelete: _removeCartItem,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(flex: 3, child: _buildPosKeypadPanel()),
+                      ],
+                    )
+                  : Column(
+                      children: [
+                        Expanded(
+                          child: CartPanel(
+                            cart: cart,
+                            total: _cartTotal,
+                            selectedIndex: _selectedCartIndex,
+                            onIncrease: _increaseQuantity,
+                            onDecrease: _decreaseQuantity,
+                            onDelete: _removeCartItem,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(height: 520, child: _buildPosKeypadPanel()),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(flex: 3, child: _buildPosKeypadPanel()),
-                ],
-              )
-            : Column(
-                children: [
-                  Expanded(
-                    child: CartPanel(
-                      cart: cart,
-                      total: _cartTotal,
-                      selectedIndex: _selectedCartIndex,
-                      onIncrease: _increaseQuantity,
-                      onDecrease: _decreaseQuantity,
-                      onDelete: _removeCartItem,
-                      onAddSampleItem: addItem,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(height: 520, child: _buildPosKeypadPanel()),
-                ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBarcodeEntry() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const Icon(Icons.qr_code_scanner, size: 28),
+            const SizedBox(width: 12),
+            const Text(
+              'Item Barcode',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: TextField(
+                controller: _barcodeController,
+                onSubmitted: _handleBarcodeSubmitted,
+                decoration: const InputDecoration(
+                  hintText: 'Enter or scan barcode',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                ),
               ),
+            ),
+            const SizedBox(width: 12),
+            FilledButton(
+              onPressed: () => _handleBarcodeSubmitted(_barcodeController.text),
+              child: const Text('Add'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -504,9 +592,9 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
                       children: [
                         Expanded(
                           child: ActionButton(
-                            label: 'SALE',
+                            label: 'TENDER',
                             color: Colors.blueGrey,
-                            onTap: _handleSale,
+                            onTap: _handleTender,
                           ),
                         ),
                         const SizedBox(height: 12),
@@ -645,6 +733,13 @@ class CartItem {
   double get total => price * quantity;
 }
 
+class ProductData {
+  final String name;
+  final double price;
+
+  const ProductData({required this.name, required this.price});
+}
+
 class CartPanel extends StatelessWidget {
   final List<CartItem> cart;
   final double total;
@@ -652,7 +747,6 @@ class CartPanel extends StatelessWidget {
   final void Function(int index) onIncrease;
   final void Function(int index) onDecrease;
   final void Function(int index) onDelete;
-  final void Function(String name, double price) onAddSampleItem;
 
   const CartPanel({
     super.key,
@@ -662,7 +756,6 @@ class CartPanel extends StatelessWidget {
     required this.onIncrease,
     required this.onDecrease,
     required this.onDelete,
-    required this.onAddSampleItem,
   });
 
   @override
@@ -672,33 +765,12 @@ class CartPanel extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Cart',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                ),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    OutlinedButton(
-                      onPressed: () => onAddSampleItem('Coffee', 3.50),
-                      child: const Text('Add Coffee'),
-                    ),
-                    OutlinedButton(
-                      onPressed: () => onAddSampleItem('Tea', 2.80),
-                      child: const Text('Add Tea'),
-                    ),
-                    OutlinedButton(
-                      onPressed: () => onAddSampleItem('Sandwich', 5.20),
-                      child: const Text('Add Sandwich'),
-                    ),
-                  ],
-                ),
-              ],
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Cart',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
             ),
             const SizedBox(height: 16),
             Expanded(
@@ -717,7 +789,7 @@ class CartPanel extends StatelessWidget {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: Dismissible(
-                            key: ValueKey('${item.name}-$index'),
+                            key: ValueKey('${item.name}-${item.price}-$index'),
                             direction: DismissDirection.endToStart,
                             onDismissed: (_) => onDelete(index),
                             background: Container(
@@ -735,6 +807,7 @@ class CartPanel extends StatelessWidget {
                               ),
                             ),
                             child: CartItemTile(
+                              index: index,
                               item: item,
                               isSelected: selectedIndex == index,
                               onIncrease: () => onIncrease(index),
@@ -782,6 +855,7 @@ class CartPanel extends StatelessWidget {
 }
 
 class CartItemTile extends StatelessWidget {
+  final int index;
   final CartItem item;
   final bool isSelected;
   final VoidCallback onIncrease;
@@ -789,6 +863,7 @@ class CartItemTile extends StatelessWidget {
 
   const CartItemTile({
     super.key,
+    required this.index,
     required this.item,
     required this.isSelected,
     required this.onIncrease,
@@ -809,6 +884,13 @@ class CartItemTile extends StatelessWidget {
       ),
       child: Row(
         children: [
+          SizedBox(
+            width: 36,
+            child: Text(
+              '${index + 1}.',
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+          ),
           Expanded(
             flex: 4,
             child: Text(
