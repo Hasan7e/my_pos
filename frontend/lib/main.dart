@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'screens/signup_page.dart';
+import 'screens/settings_page.dart';
 
 void main() {
   runApp(const MyPosApp());
@@ -417,6 +418,18 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
 
     return Scaffold(
       appBar: AppBar(
+        leadingWidth: 120,
+        leading: TextButton.icon(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsPage()),
+            );
+          },
+          icon: const Icon(Icons.settings),
+          label: const Text('Settings'),
+        ),
+
         centerTitle: true,
         title: const Text('MyPOS-Store'),
         actions: [
