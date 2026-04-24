@@ -1,8 +1,52 @@
+import 'dart:io' show Directory;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'screens/signup_page.dart';
-import 'screens/settings_page.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
+import 'package:my_pos/models/product.dart';
+import 'package:my_pos/screens/signup_page.dart';
+import 'package:my_pos/screens/settings_page.dart';
+import 'package:my_pos/data/product_store.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
-void main() {
+// this is the code that only works for desktop or mac for saving data
+/*
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  final appSupportDir = await getApplicationSupportDirectory();
+  final hiveDir = Directory('${appSupportDir.path}/my_pos_hive');
+  await hiveDir.create(recursive: true);
+
+  debugPrint('Hive directory: ${hiveDir.path}');
+
+  Hive.init(hiveDir.path);
+  Hive.registerAdapter(ProductAdapter());
+
+  final box = await Hive.openBox<Product>('products');
+  debugPrint('Opened products box with ${box.length} products');
+
+  runApp(const MyPosApp());
+} */
+
+//new code for web and desktop
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  if (kIsWeb) {
+    await Hive.initFlutter();
+  } else {
+    final appSupportDir = await getApplicationSupportDirectory();
+    final hiveDir = Directory('${appSupportDir.path}/my_pos_hive');
+    await hiveDir.create(recursive: true);
+    Hive.init(hiveDir.path);
+    debugPrint('Hive directory: ${hiveDir.path}');
+  }
+
+  Hive.registerAdapter(ProductAdapter());
+  final box = await Hive.openBox<Product>('products');
+  debugPrint('Opened products box with ${box.length} products');
+
   runApp(const MyPosApp());
 }
 
@@ -37,13 +81,6 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
   int? _selectedCartIndex;
 
   final TextEditingController _barcodeController = TextEditingController();
-
-  final Map<String, ProductData> _barcodeCatalog = {
-    '1001': const ProductData(name: 'Coffee', price: 3.50),
-    '1002': const ProductData(name: 'Tea', price: 2.80),
-    '1003': const ProductData(name: 'Sandwich', price: 5.20),
-    '1004': const ProductData(name: 'Milk', price: 1.90),
-  };
 
   final List<CartItem> cart = [];
 
@@ -293,17 +330,16 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     final barcode = rawBarcode.trim();
     if (barcode.isEmpty) return;
 
-    final matchedProduct = _barcodeCatalog[barcode];
+    final matchedProduct = ProductStore.instance.findByBarcode(barcode);
 
     if (matchedProduct != null) {
-      addItem(matchedProduct.name, matchedProduct.price);
+      addItem(matchedProduct.name, matchedProduct.salePrice);
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Scanned ${matchedProduct.name}')));
     } else {
-      addItem('Barcode Item $barcode', 0.00);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Unknown barcode: $barcode added')),
+        SnackBar(content: Text('No product found for barcode: $barcode')),
       );
     }
   }
@@ -825,13 +861,6 @@ class CartItem {
   CartItem({required this.name, required this.price, required this.quantity});
 
   double get total => price * quantity;
-}
-
-class ProductData {
-  final String name;
-  final double price;
-
-  const ProductData({required this.name, required this.price});
 }
 
 class CartPanel extends StatelessWidget {

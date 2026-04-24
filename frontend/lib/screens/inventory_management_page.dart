@@ -1,41 +1,42 @@
 import 'package:flutter/material.dart';
-import 'inventory_management_page.dart';
+import 'package:my_pos/screens/product_form_page.dart';
+import 'package:my_pos/screens/product_management_page.dart';
 
-class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key});
+class InventoryManagementPage extends StatelessWidget {
+  const InventoryManagementPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final options = [
-      _SettingsOption(
-        title: 'Manage Inventory',
-        icon: Icons.inventory_2_outlined,
+      _InventoryOption(
+        title: 'Add Product',
+        subtitle: 'Create a new product with barcode, name and price',
+        icon: Icons.add_box_outlined,
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const InventoryManagementPage()),
+            MaterialPageRoute(builder: (_) => const ProductFormPage()),
           );
         },
       ),
-      _SettingsOption(
-        title: 'Edit Quick Sale Buttons',
-        icon: Icons.tune,
-        onTap: () {},
-      ),
-      _SettingsOption(
-        title: 'Date and Time',
-        icon: Icons.access_time,
-        onTap: () {},
-      ),
-      _SettingsOption(
-        title: 'Managers Menu',
-        icon: Icons.admin_panel_settings_outlined,
-        onTap: () {},
+      _InventoryOption(
+        title: 'Product Management',
+        subtitle: 'Search, edit or delete products by barcode or name',
+        icon: Icons.edit_note,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ProductManagementPage()),
+          );
+        },
       ),
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings'), centerTitle: true),
+      appBar: AppBar(
+        title: const Text('Inventory Management'),
+        centerTitle: true,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: GridView.builder(
@@ -44,7 +45,7 @@ class SettingsPage extends StatelessWidget {
             crossAxisCount: 2,
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
-            childAspectRatio: 1.35,
+            childAspectRatio: 1.5,
           ),
           itemBuilder: (context, index) {
             final option = options[index];
@@ -63,9 +64,15 @@ class SettingsPage extends StatelessWidget {
                         option.title,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
                         ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        option.subtitle,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey.shade700),
                       ),
                     ],
                   ),
@@ -79,13 +86,15 @@ class SettingsPage extends StatelessWidget {
   }
 }
 
-class _SettingsOption {
+class _InventoryOption {
   final String title;
+  final String subtitle;
   final IconData icon;
   final VoidCallback onTap;
 
-  const _SettingsOption({
+  const _InventoryOption({
     required this.title,
+    required this.subtitle,
     required this.icon,
     required this.onTap,
   });
