@@ -1,54 +1,39 @@
 import 'package:flutter/material.dart';
-import 'inventory_management_page.dart';
-import 'package:my_pos/screens/inventory_management_page.dart';
-import 'package:my_pos/screens/manager_menu_page.dart';
-import 'package:my_pos/screens/receipt_list_page.dart';
+import 'package:my_pos/screens/sales_history_page.dart';
+import 'package:my_pos/screens/quick_sale_buttons_page.dart';
 
-class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key});
+class ManagerMenuPage extends StatelessWidget {
+  const ManagerMenuPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final options = [
-      _SettingsOption(
-        title: 'Manage Inventory',
-        icon: Icons.inventory_2_outlined,
+      _ManagerOption(
+        title: 'Sales History',
+        subtitle: 'View completed sales records',
+        icon: Icons.receipt_long,
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const InventoryManagementPage()),
+            MaterialPageRoute(builder: (_) => const SalesHistoryPage()),
           );
         },
       ),
-      _SettingsOption(
-        title: 'Receipts',
-        icon: Icons.receipt,
+      _ManagerOption(
+        title: 'Edit Quick Sale Buttons',
+        subtitle: 'Change button names and prices',
+        icon: Icons.tune,
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const ReceiptListPage()),
-          );
-        },
-      ),
-      _SettingsOption(
-        title: 'Date and Time',
-        icon: Icons.access_time,
-        onTap: () {},
-      ),
-      _SettingsOption(
-        title: 'Managers Menu',
-        icon: Icons.admin_panel_settings_outlined,
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const ManagerMenuPage()),
+            MaterialPageRoute(builder: (_) => const QuickSaleButtonsPage()),
           );
         },
       ),
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings'), centerTitle: true),
+      appBar: AppBar(title: const Text('Manager\'s Menu'), centerTitle: true),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: GridView.builder(
@@ -57,10 +42,11 @@ class SettingsPage extends StatelessWidget {
             crossAxisCount: 2,
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
-            childAspectRatio: 1.35,
+            childAspectRatio: 1.5,
           ),
           itemBuilder: (context, index) {
             final option = options[index];
+
             return Card(
               child: InkWell(
                 borderRadius: BorderRadius.circular(16),
@@ -76,9 +62,15 @@ class SettingsPage extends StatelessWidget {
                         option.title,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
                         ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        option.subtitle,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey.shade700),
                       ),
                     ],
                   ),
@@ -92,13 +84,15 @@ class SettingsPage extends StatelessWidget {
   }
 }
 
-class _SettingsOption {
+class _ManagerOption {
   final String title;
+  final String subtitle;
   final IconData icon;
   final VoidCallback onTap;
 
-  const _SettingsOption({
+  const _ManagerOption({
     required this.title,
+    required this.subtitle,
     required this.icon,
     required this.onTap,
   });

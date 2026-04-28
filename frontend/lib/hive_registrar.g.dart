@@ -4,15 +4,27 @@
 
 import 'package:hive_ce/hive.dart';
 import 'package:my_pos/models/product.dart';
+import 'package:my_pos/models/quick_sale_config.dart';
+import 'package:my_pos/models/receipt_record.dart';
+import 'package:my_pos/models/sale_line_item.dart';
+import 'package:my_pos/models/sale_record.dart';
 
 extension HiveRegistrar on HiveInterface {
   void registerAdapters() {
     registerAdapter(ProductAdapter());
+    registerAdapter(QuickSaleConfigAdapter());
+    registerAdapter(ReceiptRecordAdapter());
+    registerAdapter(SaleLineItemAdapter());
+    registerAdapter(SaleRecordAdapter());
   }
 }
 
 extension IsolatedHiveRegistrar on IsolatedHiveInterface {
   void registerAdapters() {
     registerAdapter(ProductAdapter());
+    registerAdapter(QuickSaleConfigAdapter());
+    registerAdapter(ReceiptRecordAdapter());
+    registerAdapter(SaleLineItemAdapter());
+    registerAdapter(SaleRecordAdapter());
   }
 }

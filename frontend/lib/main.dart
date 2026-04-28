@@ -8,6 +8,13 @@ import 'package:my_pos/screens/settings_page.dart';
 import 'package:my_pos/data/product_store.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:my_pos/data/sales_store.dart';
+import 'package:my_pos/models/receipt_record.dart';
+import 'package:my_pos/models/sale_line_item.dart';
+import 'package:my_pos/models/sale_record.dart';
+import 'package:my_pos/data/quick_sale_store.dart';
+import 'package:my_pos/models/quick_sale_config.dart';
+import 'package:my_pos/screens/receipt_view_page.dart';
 
 // this is the code that only works for desktop or mac for saving data
 /*
@@ -40,13 +47,18 @@ Future<void> main() async {
     final hiveDir = Directory('${appSupportDir.path}/my_pos_hive');
     await hiveDir.create(recursive: true);
     Hive.init(hiveDir.path);
-    debugPrint('Hive directory: ${hiveDir.path}');
   }
 
   Hive.registerAdapter(ProductAdapter());
-  final box = await Hive.openBox<Product>('products');
-  debugPrint('Opened products box with ${box.length} products');
-
+  Hive.registerAdapter(SaleLineItemAdapter());
+  Hive.registerAdapter(SaleRecordAdapter());
+  Hive.registerAdapter(ReceiptRecordAdapter());
+  Hive.registerAdapter(QuickSaleConfigAdapter());
+  await Hive.openBox<Product>('products');
+  await Hive.openBox<SaleRecord>('sales');
+  await Hive.openBox<ReceiptRecord>('receipts');
+  await Hive.openBox<QuickSaleConfig>('quick_sales');
+  await QuickSaleStore.instance.ensureDefaults();
   runApp(const MyPosApp());
 }
 
@@ -88,6 +100,57 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
   void dispose() {
     _barcodeController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleCashPayment() async {
+    if (cart.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add items to the basket first')),
+      );
+      return;
+    }
+
+    final total = _cartTotal;
+    final tenderedAmount = _hasAmount ? double.parse(_currentInput) : total;
+
+    if (tenderedAmount < total) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cash received is less than the sale total'),
+        ),
+      );
+      return;
+    }
+
+    final changeDue = tenderedAmount - total;
+
+    final shouldContinue = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Change Due'),
+          content: Text(
+            'Total: €${total.toStringAsFixed(2)}\n'
+            'Cash Received: €${tenderedAmount.toStringAsFixed(2)}\n'
+            'Change Due: €${changeDue.toStringAsFixed(2)}',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Continue'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldContinue != true) return;
+
+    await _completeSale('Cash');
   }
 
   Future<void> _showLoginDialog() async {
@@ -377,6 +440,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     );
   }
 
+  /* old code only text pop up for receipt 
   Future<void> _offerReceipt(String paymentMethod, double total) async {
     final shouldPrint = await showDialog<bool>(
       context: context,
@@ -411,6 +475,16 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
         ),
       ),
     );
+  } */
+
+  // new code to show receipt view page after sale completion with the receipt details
+  Future<void> _offerReceipt(ReceiptRecord receipt) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ReceiptViewPage(receipt: receipt, askToPrint: true),
+      ),
+    );
   }
 
   Future<void> _completeSale(String paymentMethod) async {
@@ -421,11 +495,39 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
       return;
     }
 
+    final now = DateTime.now();
+    final saleId = now.microsecondsSinceEpoch.toString();
+    final lineItems = _buildSaleLineItems();
+    final vatBreakdown = _buildVatBreakdown(lineItems);
+    final serverName = _loggedInUser.isEmpty ? 'Unknown Server' : _loggedInUser;
     final total = _cartTotal;
 
-    debugPrint(
-      'sale completed by $paymentMethod: €${total.toStringAsFixed(2)}',
+    final sale = SaleRecord(
+      id: saleId,
+      createdAt: now,
+      serverName: serverName,
+      paymentMethod: paymentMethod,
+      total: total,
+      items: lineItems,
+      vatBreakdown: vatBreakdown,
     );
+
+    final receipt = ReceiptRecord(
+      id: 'R$saleId',
+      saleId: saleId,
+      shopName: 'MyPOS-Store',
+      shopAddress: 'Shop Address Here',
+      vatNumber: 'VAT123456',
+      createdAt: now,
+      serverName: serverName,
+      paymentMethod: paymentMethod,
+      total: total,
+      items: lineItems,
+      vatBreakdown: vatBreakdown,
+    );
+
+    await SalesStore.instance.saveSale(sale);
+    await SalesStore.instance.saveReceipt(receipt);
 
     setState(() {
       cart.clear();
@@ -444,7 +546,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
       ),
     );
 
-    await _offerReceipt(paymentMethod, total);
+    await _offerReceipt(receipt);
   }
 
   @override
@@ -764,7 +866,8 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
               child: ActionButton(
                 label: 'CASH',
                 color: Colors.green,
-                onTap: () => _completeSale('Cash'),
+                onTap: _handleCashPayment,
+
                 isLarge: true,
               ),
             ),
@@ -772,6 +875,44 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
         ),
       ),
     );
+  }
+
+  List<SaleLineItem> _buildSaleLineItems() {
+    return cart.map((item) {
+      final product = ProductStore.instance.findByBarcode(item.name);
+      final matchedProduct = ProductStore.instance.products.firstWhere(
+        (product) => product.name == item.name,
+        orElse: () => Product(
+          id: '',
+          barcode: '',
+          name: item.name,
+          salePrice: item.price,
+          vatRate: 23,
+        ),
+      );
+
+      return SaleLineItem(
+        name: item.name,
+        barcode: matchedProduct.barcode.isEmpty ? null : matchedProduct.barcode,
+        quantity: item.quantity,
+        unitPrice: item.price,
+        vatRate: matchedProduct.vatRate,
+      );
+    }).toList();
+  }
+
+  Map<String, double> _buildVatBreakdown(List<SaleLineItem> items) {
+    final Map<String, double> breakdown = {};
+
+    for (final item in items) {
+      final rateKey = item.vatRate.toStringAsFixed(
+        item.vatRate % 1 == 0 ? 0 : 1,
+      );
+      final vatAmount = item.lineTotal * item.vatRate / (100 + item.vatRate);
+      breakdown[rateKey] = (breakdown[rateKey] ?? 0) + vatAmount;
+    }
+
+    return breakdown;
   }
 }
 
@@ -898,23 +1039,23 @@ class CartPanel extends StatelessWidget {
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                 ),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    OutlinedButton(
-                      onPressed: () => onAddSampleItem('Coffee', 3.50),
-                      child: const Text('Add Coffee'),
-                    ),
-                    OutlinedButton(
-                      onPressed: () => onAddSampleItem('Tea', 2.80),
-                      child: const Text('Add Tea'),
-                    ),
-                    OutlinedButton(
-                      onPressed: () => onAddSampleItem('Sandwich', 5.20),
-                      child: const Text('Add Sandwich'),
-                    ),
-                  ],
+                ValueListenableBuilder<Box<QuickSaleConfig>>(
+                  valueListenable: QuickSaleStore.instance.listenable(),
+                  builder: (context, box, _) {
+                    final buttons = QuickSaleStore.instance.getButtons();
+
+                    return Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: buttons.map((button) {
+                        return OutlinedButton(
+                          onPressed: () =>
+                              onAddSampleItem(button.label, button.price),
+                          child: Text('Add ${button.label}'),
+                        );
+                      }).toList(),
+                    );
+                  },
                 ),
               ],
             ),
