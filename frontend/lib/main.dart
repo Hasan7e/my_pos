@@ -89,7 +89,10 @@ class SalesDashboardPage extends StatefulWidget {
 class _SalesDashboardPageState extends State<SalesDashboardPage> {
   bool _isLoggedIn = false;
   String _loggedInUser = '';
-  String _currentInput = '';
+  int _currentInputCents = 0;
+
+  double get _currentInputAmount => _currentInputCents / 100;
+
   int? _selectedCartIndex;
 
   final TextEditingController _barcodeController = TextEditingController();
@@ -111,7 +114,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     }
 
     final total = _cartTotal;
-    final tenderedAmount = _hasAmount ? double.parse(_currentInput) : total;
+    final tenderedAmount = _hasAmount ? _currentInputAmount : total;
 
     if (tenderedAmount < total) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -274,30 +277,38 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     ).showSnackBar(const SnackBar(content: Text('Logged out')));
   }
 
+  void _appendDigit(String digit) {
+    setState(() {
+      _currentInputCents = (_currentInputCents * 10) + int.parse(digit);
+    });
+  }
+
+  void _appendDoubleZero() {
+    setState(() {
+      _currentInputCents = _currentInputCents * 100;
+    });
+  }
+
   void _appendInput(String value) {
     setState(() {
       if (value == '.') {
-        if (_currentInput.contains('.')) return;
-        if (_currentInput.isEmpty) {
-          _currentInput = '0.';
-          return;
-        }
+        // Decimal point - multiply by 100 to convert existing cents to euros with decimal
+        _currentInputCents = _currentInputCents * 100;
+      } else {
+        _currentInputCents = (_currentInputCents * 10) + int.parse(value);
       }
-      _currentInput += value;
     });
   }
 
   void _backspaceInput() {
-    if (_currentInput.isEmpty) return;
-
     setState(() {
-      _currentInput = _currentInput.substring(0, _currentInput.length - 1);
+      _currentInputCents = _currentInputCents ~/ 10;
     });
   }
 
   void _clearInput() {
     setState(() {
-      _currentInput = '';
+      _currentInputCents = 0;
     });
   }
 
@@ -327,7 +338,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     if (shouldCancel != true) return;
 
     setState(() {
-      _currentInput = '';
+      _currentInputCents = 0;
       _selectedCartIndex = null;
       cart.clear();
       _barcodeController.clear();
@@ -341,8 +352,11 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
   }
 
   void _setCashNote(String value) {
+    final parsed = double.tryParse(value);
+    if (parsed == null) return;
+
     setState(() {
-      _currentInput = value;
+      _currentInputCents = (parsed * 100).round();
     });
   }
 
@@ -412,18 +426,16 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
   }
 
   bool get _hasAmount {
-    return _currentInput.isNotEmpty &&
-        _currentInput != '.' &&
-        double.tryParse(_currentInput) != null;
+    return _currentInputCents > 0;
   }
 
   String get _displayValue {
-    return _currentInput.isEmpty ? '0.00' : _currentInput;
+    return (_currentInputCents / 100).toStringAsFixed(2);
   }
 
   void _handleTender() {
-    final amount = double.tryParse(_currentInput);
-    if (amount == null || amount <= 0) {
+    final amount = _currentInputAmount;
+    if (amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Enter a valid amount first')),
       );
@@ -432,7 +444,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
 
     addItem('Open Item', amount);
     setState(() {
-      _currentInput = '';
+      _currentInputCents = 0;
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -531,7 +543,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
 
     setState(() {
       cart.clear();
-      _currentInput = '';
+      _currentInputCents = 0;
       _selectedCartIndex = null;
       _barcodeController.clear();
     });
@@ -731,47 +743,47 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
                             children: [
                               KeypadButton(
                                 label: '7',
-                                onTap: () => _appendInput('7'),
+                                onTap: () => _appendDigit('7'),
                               ),
                               KeypadButton(
                                 label: '8',
-                                onTap: () => _appendInput('8'),
+                                onTap: () => _appendDigit('8'),
                               ),
                               KeypadButton(
                                 label: '9',
-                                onTap: () => _appendInput('9'),
+                                onTap: () => _appendDigit('9'),
                               ),
                               KeypadButton(
                                 label: '4',
-                                onTap: () => _appendInput('4'),
+                                onTap: () => _appendDigit('4'),
                               ),
                               KeypadButton(
                                 label: '5',
-                                onTap: () => _appendInput('5'),
+                                onTap: () => _appendDigit('5'),
                               ),
                               KeypadButton(
                                 label: '6',
-                                onTap: () => _appendInput('6'),
+                                onTap: () => _appendDigit('6'),
                               ),
                               KeypadButton(
                                 label: '1',
-                                onTap: () => _appendInput('1'),
+                                onTap: () => _appendDigit('1'),
                               ),
                               KeypadButton(
                                 label: '2',
-                                onTap: () => _appendInput('2'),
+                                onTap: () => _appendDigit('2'),
                               ),
                               KeypadButton(
                                 label: '3',
-                                onTap: () => _appendInput('3'),
-                              ),
-                              KeypadButton(
-                                label: '.',
-                                onTap: () => _appendInput('.'),
+                                onTap: () => _appendDigit('3'),
                               ),
                               KeypadButton(
                                 label: '0',
-                                onTap: () => _appendInput('0'),
+                                onTap: () => _appendDigit('0'),
+                              ),
+                              KeypadButton(
+                                label: '00',
+                                onTap: _appendDoubleZero,
                               ),
                               KeypadButton(
                                 label: '⌫',
@@ -867,7 +879,6 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
                 label: 'CASH',
                 color: Colors.green,
                 onTap: _handleCashPayment,
-
                 isLarge: true,
               ),
             ),
@@ -879,7 +890,6 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
 
   List<SaleLineItem> _buildSaleLineItems() {
     return cart.map((item) {
-      final product = ProductStore.instance.findByBarcode(item.name);
       final matchedProduct = ProductStore.instance.products.firstWhere(
         (product) => product.name == item.name,
         orElse: () => Product(
