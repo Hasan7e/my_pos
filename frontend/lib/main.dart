@@ -15,6 +15,9 @@ import 'package:my_pos/models/sale_record.dart';
 import 'package:my_pos/data/quick_sale_store.dart';
 import 'package:my_pos/models/quick_sale_config.dart';
 import 'package:my_pos/screens/receipt_view_page.dart';
+import 'package:my_pos/data/user_store.dart';
+import 'package:my_pos/models/app_config.dart';
+import 'package:my_pos/models/app_user.dart';
 
 // this is the code that only works for desktop or mac for saving data
 /*
@@ -54,11 +57,15 @@ Future<void> main() async {
   Hive.registerAdapter(SaleRecordAdapter());
   Hive.registerAdapter(ReceiptRecordAdapter());
   Hive.registerAdapter(QuickSaleConfigAdapter());
+  Hive.registerAdapter(AppUserAdapter());
+  Hive.registerAdapter(AppConfigAdapter());
   await Hive.openBox<Product>('products');
   await Hive.openBox<SaleRecord>('sales');
   await Hive.openBox<ReceiptRecord>('receipts');
   await Hive.openBox<QuickSaleConfig>('quick_sales');
   await QuickSaleStore.instance.ensureDefaults();
+  await Hive.openBox<AppUser>('users');
+  await Hive.openBox<AppConfig>('app_config');
   runApp(const MyPosApp());
 }
 
@@ -226,14 +233,23 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
             ),
             FilledButton(
               onPressed: () {
-                if (formKey.currentState!.validate()) {
-                  Navigator.of(context).pop(
-                    _LoginResult(
-                      username: usernameController.text.trim(),
-                      password: passwordController.text.trim(),
+                if (!formKey.currentState!.validate()) return;
+
+                final user = UserStore.instance.authenticate(
+                  username: usernameController.text.trim(),
+                  password: passwordController.text.trim(),
+                );
+
+                if (user == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Invalid username or password'),
                     ),
                   );
+                  return;
                 }
+
+                Navigator.of(context).pop(_LoginResult(user: user));
               },
               child: const Text('Login'),
             ),
@@ -245,13 +261,13 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     if (result != null) {
       setState(() {
         _isLoggedIn = true;
-        _loggedInUser = result.username;
+        _loggedInUser = result.user.username;
       });
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Logged in as ${result.username}')),
+        SnackBar(content: Text('Logged in as ${result.user.username}')),
       );
     }
   }
@@ -1240,8 +1256,7 @@ class CartItemTile extends StatelessWidget {
 }
 
 class _LoginResult {
-  final String username;
-  final String password;
+  final AppUser user;
 
-  _LoginResult({required this.username, required this.password});
+  _LoginResult({required this.user});
 }

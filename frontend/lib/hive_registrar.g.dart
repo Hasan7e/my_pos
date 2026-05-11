@@ -3,6 +3,8 @@
 // Check in to version control
 
 import 'package:hive_ce/hive.dart';
+import 'package:my_pos/models/app_config.dart';
+import 'package:my_pos/models/app_user.dart';
 import 'package:my_pos/models/product.dart';
 import 'package:my_pos/models/quick_sale_config.dart';
 import 'package:my_pos/models/receipt_record.dart';
@@ -11,6 +13,8 @@ import 'package:my_pos/models/sale_record.dart';
 
 extension HiveRegistrar on HiveInterface {
   void registerAdapters() {
+    registerAdapter(AppConfigAdapter());
+    registerAdapter(AppUserAdapter());
     registerAdapter(ProductAdapter());
     registerAdapter(QuickSaleConfigAdapter());
     registerAdapter(ReceiptRecordAdapter());
@@ -21,6 +25,8 @@ extension HiveRegistrar on HiveInterface {
 
 extension IsolatedHiveRegistrar on IsolatedHiveInterface {
   void registerAdapters() {
+    registerAdapter(AppConfigAdapter());
+    registerAdapter(AppUserAdapter());
     registerAdapter(ProductAdapter());
     registerAdapter(QuickSaleConfigAdapter());
     registerAdapter(ReceiptRecordAdapter());
