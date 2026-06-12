@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:my_pos/screens/x_report_page.dart';
 
 class SalesReportPage extends StatelessWidget {
   const SalesReportPage({super.key});
@@ -11,9 +12,10 @@ class SalesReportPage extends StatelessWidget {
         subtitle: 'View current sales summary without closing the day',
         icon: Icons.analytics_outlined,
         onTap: () {
-          ScaffoldMessenger.of(
+          Navigator.push(
             context,
-          ).showSnackBar(const SnackBar(content: Text('X Report opened')));
+            MaterialPageRoute(builder: (_) => const XReportPage()),
+          );
         },
       ),
       _ReportOption(
