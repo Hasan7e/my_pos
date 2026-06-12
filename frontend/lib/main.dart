@@ -18,6 +18,7 @@ import 'package:my_pos/screens/receipt_view_page.dart';
 import 'package:my_pos/data/user_store.dart';
 import 'package:my_pos/models/app_config.dart';
 import 'package:my_pos/models/app_user.dart';
+import 'package:my_pos/data/receipt_settings_store.dart';
 
 // this is the code that only works for desktop or mac for saving data
 /*
@@ -539,13 +540,13 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
       items: lineItems,
       vatBreakdown: vatBreakdown,
     );
-
+    final receiptSettings = ReceiptSettingsStore.instance.getSettings();
     final receipt = ReceiptRecord(
       id: 'R$saleId',
       saleId: saleId,
-      shopName: 'MyPOS-Store',
-      shopAddress: 'Shop Address Here',
-      vatNumber: 'VAT123456',
+      shopName: receiptSettings.shopName,
+      shopAddress: receiptSettings.shopAddress,
+      vatNumber: receiptSettings.vatNumber,
       createdAt: now,
       serverName: serverName,
       paymentMethod: paymentMethod,

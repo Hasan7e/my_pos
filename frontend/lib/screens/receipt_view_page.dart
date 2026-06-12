@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:my_pos/models/receipt_record.dart';
+import 'package:my_pos/data/receipt_settings_store.dart';
 
 class ReceiptViewPage extends StatelessWidget {
   final ReceiptRecord receipt;
@@ -13,6 +14,7 @@ class ReceiptViewPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final receiptSettings = ReceiptSettingsStore.instance.getSettings();
     return Scaffold(
       appBar: AppBar(
         title: const Text('Receipt'),
@@ -104,6 +106,14 @@ class ReceiptViewPage extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (receiptSettings.footerMessage.trim().isNotEmpty) ...[
+                    const Divider(height: 24),
+                    Text(
+                      receiptSettings.footerMessage,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ],
                   if (askToPrint) ...[
                     const SizedBox(height: 24),
                     const Divider(),

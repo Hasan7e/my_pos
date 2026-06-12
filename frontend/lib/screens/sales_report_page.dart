@@ -1,63 +1,35 @@
 import 'package:flutter/material.dart';
-import 'package:my_pos/screens/sales_history_page.dart';
-import 'package:my_pos/screens/quick_sale_buttons_page.dart';
-import 'package:my_pos/screens/sales_report_page.dart';
-import 'package:my_pos/screens/customization_page.dart';
 
-class ManagerMenuPage extends StatelessWidget {
-  const ManagerMenuPage({super.key});
+class SalesReportPage extends StatelessWidget {
+  const SalesReportPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final options = [
-      _ManagerOption(
-        title: 'Sales History',
-        subtitle: 'View completed sales records',
-        icon: Icons.receipt_long,
+      _ReportOption(
+        title: 'X Report',
+        subtitle: 'View current sales summary without closing the day',
+        icon: Icons.analytics_outlined,
         onTap: () {
-          Navigator.push(
+          ScaffoldMessenger.of(
             context,
-            MaterialPageRoute(builder: (_) => const SalesHistoryPage()),
-          );
+          ).showSnackBar(const SnackBar(content: Text('X Report opened')));
         },
       ),
-      _ManagerOption(
-        title: 'Edit Quick Sale Buttons',
-        subtitle: 'Change button names and prices',
-        icon: Icons.tune,
+      _ReportOption(
+        title: 'Z Report',
+        subtitle: 'View end-of-day report and close the trading period',
+        icon: Icons.assignment_turned_in_outlined,
         onTap: () {
-          Navigator.push(
+          ScaffoldMessenger.of(
             context,
-            MaterialPageRoute(builder: (_) => const QuickSaleButtonsPage()),
-          );
-        },
-      ),
-      _ManagerOption(
-        title: 'Sales Report',
-        subtitle: 'View X and Z reports',
-        icon: Icons.bar_chart_outlined,
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const SalesReportPage()),
-          );
-        },
-      ),
-      _ManagerOption(
-        title: 'Customization',
-        subtitle: 'Adjust store and POS settings',
-        icon: Icons.dashboard_customize_outlined,
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const CustomizationPage()),
-          );
+          ).showSnackBar(const SnackBar(content: Text('Z Report opened')));
         },
       ),
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Manager\'s Menu'), centerTitle: true),
+      appBar: AppBar(title: const Text('Sales Report'), centerTitle: true),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: GridView.builder(
@@ -108,13 +80,13 @@ class ManagerMenuPage extends StatelessWidget {
   }
 }
 
-class _ManagerOption {
+class _ReportOption {
   final String title;
   final String subtitle;
   final IconData icon;
   final VoidCallback onTap;
 
-  const _ManagerOption({
+  const _ReportOption({
     required this.title,
     required this.subtitle,
     required this.icon,
