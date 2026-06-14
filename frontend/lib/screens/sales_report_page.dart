@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:my_pos/screens/x_report_page.dart';
+import 'package:my_pos/screens/z_report_history_page.dart';
+import 'package:my_pos/screens/z_report_page.dart';
 
 class SalesReportPage extends StatelessWidget {
   const SalesReportPage({super.key});
@@ -23,9 +25,21 @@ class SalesReportPage extends StatelessWidget {
         subtitle: 'View end-of-day report and close the trading period',
         icon: Icons.assignment_turned_in_outlined,
         onTap: () {
-          ScaffoldMessenger.of(
+          Navigator.push(
             context,
-          ).showSnackBar(const SnackBar(content: Text('Z Report opened')));
+            MaterialPageRoute(builder: (_) => const ZReportPage()),
+          );
+        },
+      ),
+      _ReportOption(
+        title: 'Z Report History',
+        subtitle: 'View and reprint previous Z reports',
+        icon: Icons.history_outlined,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ZReportHistoryPage()),
+          );
         },
       ),
     ];

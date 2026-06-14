@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'inventory_management_page.dart';
 import 'package:my_pos/screens/inventory_management_page.dart';
 import 'package:my_pos/screens/manager_menu_page.dart';
 import 'package:my_pos/screens/receipt_list_page.dart';

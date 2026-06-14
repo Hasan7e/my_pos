@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive_ce/hive.dart';
 import 'package:my_pos/data/receipt_settings_store.dart';
+import 'package:my_pos/data/report_store.dart';
 import 'package:my_pos/data/sales_store.dart';
 import 'package:my_pos/models/sale_line_item.dart';
 import 'package:my_pos/models/sale_record.dart';
@@ -22,7 +23,10 @@ class XReportPage extends StatelessWidget {
       body: ValueListenableBuilder<Box<SaleRecord>>(
         valueListenable: SalesStore.instance.salesListenable(),
         builder: (context, box, _) {
-          final report = _XReportData.fromSales(SalesStore.instance.getSales());
+          final periodSales = ReportStore.instance.getCurrentPeriodSales(
+            SalesStore.instance.getSales(),
+          );
+          final report = _XReportData.fromSales(periodSales);
 
           if (report.transactionCount == 0) {
             return const Center(child: Text('No sales recorded yet'));
@@ -264,8 +268,8 @@ class _ReportHeader extends StatelessWidget {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
-            Text('From: ${report.startTime}'),
-            Text('To: ${report.endTime}'),
+            Text('From: ${report.startTime.toLocal()}'),
+            Text('To: ${report.endTime.toLocal()}'),
             const SizedBox(height: 8),
             const Text(
               'This report does not close or reset the trading period.',

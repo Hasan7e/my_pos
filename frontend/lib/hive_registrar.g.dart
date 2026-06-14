@@ -10,6 +10,7 @@ import 'package:my_pos/models/quick_sale_config.dart';
 import 'package:my_pos/models/receipt_record.dart';
 import 'package:my_pos/models/sale_line_item.dart';
 import 'package:my_pos/models/sale_record.dart';
+import 'package:my_pos/models/z_report_record.dart';
 
 extension HiveRegistrar on HiveInterface {
   void registerAdapters() {
@@ -20,6 +21,7 @@ extension HiveRegistrar on HiveInterface {
     registerAdapter(ReceiptRecordAdapter());
     registerAdapter(SaleLineItemAdapter());
     registerAdapter(SaleRecordAdapter());
+    registerAdapter(ZReportRecordAdapter());
   }
 }
 
@@ -32,5 +34,6 @@ extension IsolatedHiveRegistrar on IsolatedHiveInterface {
     registerAdapter(ReceiptRecordAdapter());
     registerAdapter(SaleLineItemAdapter());
     registerAdapter(SaleRecordAdapter());
+    registerAdapter(ZReportRecordAdapter());
   }
 }
