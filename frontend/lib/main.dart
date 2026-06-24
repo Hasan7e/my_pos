@@ -100,6 +100,7 @@ class SalesDashboardPage extends StatefulWidget {
 class _SalesDashboardPageState extends State<SalesDashboardPage> {
   bool _isLoggedIn = false;
   String _loggedInUser = '';
+  AppUser? _currentUser;
   int _currentInputCents = 0;
 
   double get _currentInputAmount => _currentInputCents / 100;
@@ -266,6 +267,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
       setState(() {
         _isLoggedIn = true;
         _loggedInUser = result.user.username;
+        _currentUser = result.user;
       });
 
       if (!mounted) return;
@@ -290,6 +292,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     setState(() {
       _isLoggedIn = false;
       _loggedInUser = '';
+      _currentUser = null;
     });
 
     ScaffoldMessenger.of(
@@ -593,7 +596,9 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const SettingsPage()),
+              MaterialPageRoute(
+                builder: (_) => SettingsPage(currentUser: _currentUser),
+              ),
             );
           },
           icon: const Icon(Icons.settings),

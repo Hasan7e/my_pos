@@ -1,10 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:my_pos/models/app_user.dart';
 import 'package:my_pos/screens/inventory_management_page.dart';
 import 'package:my_pos/screens/manager_menu_page.dart';
 import 'package:my_pos/screens/receipt_list_page.dart';
 
 class SettingsPage extends StatelessWidget {
-  const SettingsPage({super.key});
+  final AppUser? currentUser;
+
+  const SettingsPage({super.key, this.currentUser});
+
+  bool get _isManager => currentUser?.isAdmin == true;
+
+  void _openManagerOnlyPage(
+    BuildContext context,
+    Widget page,
+    String featureName,
+  ) {
+    if (!_isManager) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$featureName is only available to managers.')),
+      );
+      return;
+    }
+
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -13,9 +33,10 @@ class SettingsPage extends StatelessWidget {
         title: 'Manage Inventory',
         icon: Icons.inventory_2_outlined,
         onTap: () {
-          Navigator.push(
+          _openManagerOnlyPage(
             context,
-            MaterialPageRoute(builder: (_) => const InventoryManagementPage()),
+            const InventoryManagementPage(),
+            'Manage Inventory',
           );
         },
       ),
@@ -38,9 +59,10 @@ class SettingsPage extends StatelessWidget {
         title: 'Managers Menu',
         icon: Icons.admin_panel_settings_outlined,
         onTap: () {
-          Navigator.push(
+          _openManagerOnlyPage(
             context,
-            MaterialPageRoute(builder: (_) => const ManagerMenuPage()),
+            const ManagerMenuPage(),
+            'Manager\'s Menu',
           );
         },
       ),
