@@ -3,6 +3,7 @@ import 'package:my_pos/screens/sales_history_page.dart';
 import 'package:my_pos/screens/quick_sale_buttons_page.dart';
 import 'package:my_pos/screens/sales_report_page.dart';
 import 'package:my_pos/screens/customization_page.dart';
+import 'package:my_pos/screens/user_management_page.dart';
 
 class ManagerMenuPage extends StatelessWidget {
   const ManagerMenuPage({super.key});
@@ -51,6 +52,17 @@ class ManagerMenuPage extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const CustomizationPage()),
+          );
+        },
+      ),
+      _ManagerOption(
+        title: 'User Management',
+        subtitle: 'Deactivate or reactivate staff accounts',
+        icon: Icons.manage_accounts_outlined,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const UserManagementPage()),
           );
         },
       ),
