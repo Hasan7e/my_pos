@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_ce/hive.dart';
+import 'package:my_pos/data/app_settings_store.dart';
 import 'package:my_pos/data/sales_store.dart';
 import 'package:my_pos/models/receipt_record.dart';
 import 'package:my_pos/screens/receipt_view_page.dart';
@@ -14,6 +15,7 @@ class ReceiptListPage extends StatelessWidget {
       body: ValueListenableBuilder<Box<ReceiptRecord>>(
         valueListenable: SalesStore.instance.receiptsListenable(),
         builder: (context, box, _) {
+          final appSettings = AppSettingsStore.instance;
           final receipts = SalesStore.instance.getReceipts();
 
           if (receipts.isEmpty) {
@@ -33,7 +35,7 @@ class ReceiptListPage extends StatelessWidget {
                     '${receipt.createdAt} | ${receipt.paymentMethod}',
                   ),
                   trailing: Text(
-                    '€${receipt.total.toStringAsFixed(2)}',
+                    appSettings.formatMoney(receipt.total),
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   onTap: () {

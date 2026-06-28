@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:my_pos/models/app_user.dart';
+import 'package:my_pos/screens/date_time_currency_page.dart';
 import 'package:my_pos/screens/inventory_management_page.dart';
 import 'package:my_pos/screens/manager_menu_page.dart';
 import 'package:my_pos/screens/receipt_list_page.dart';
@@ -51,9 +52,14 @@ class SettingsPage extends StatelessWidget {
         },
       ),
       _SettingsOption(
-        title: 'Date and Time',
+        title: 'Date-Time and Currency',
         icon: Icons.access_time,
-        onTap: () {},
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const DateTimeCurrencyPage()),
+          );
+        },
       ),
       _SettingsOption(
         title: 'Managers Menu',

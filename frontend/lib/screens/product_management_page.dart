@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_ce/hive.dart';
+import 'package:my_pos/data/app_settings_store.dart';
 import 'package:my_pos/data/product_store.dart';
 import 'package:my_pos/models/product.dart';
 import 'package:my_pos/screens/product_form_page.dart';
@@ -76,6 +77,7 @@ class _ProductManagementPageState extends State<ProductManagementPage> {
               child: ValueListenableBuilder<Box<Product>>(
                 valueListenable: ProductStore.instance.listenable(),
                 builder: (context, box, _) {
+                  final appSettings = AppSettingsStore.instance;
                   final filtered = ProductStore.instance.search(_query);
 
                   if (filtered.isEmpty) {
@@ -92,7 +94,7 @@ class _ProductManagementPageState extends State<ProductManagementPage> {
                         child: ListTile(
                           title: Text(product.name),
                           subtitle: Text(
-                            'Barcode: ${product.barcode} | Sale Price: €${product.salePrice.toStringAsFixed(2)}',
+                            'Barcode: ${product.barcode} | Sale Price: ${appSettings.formatMoney(product.salePrice)}',
                           ),
                           trailing: Wrap(
                             spacing: 8,

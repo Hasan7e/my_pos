@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_ce/hive.dart';
+import 'package:my_pos/data/app_settings_store.dart';
 import 'package:my_pos/data/report_store.dart';
 import 'package:my_pos/models/z_report_record.dart';
 import 'package:my_pos/screens/z_report_print_page.dart';
@@ -14,6 +15,7 @@ class ZReportHistoryPage extends StatelessWidget {
       body: ValueListenableBuilder<Box<ZReportRecord>>(
         valueListenable: ReportStore.instance.zReportsListenable(),
         builder: (context, box, _) {
+          final appSettings = AppSettingsStore.instance;
           final reports = ReportStore.instance.getZReports();
 
           if (reports.isEmpty) {
@@ -35,7 +37,7 @@ class ZReportHistoryPage extends StatelessWidget {
                     '${reportDate.toLocal()} | ${report.transactionCount} transactions',
                   ),
                   trailing: Text(
-                    '€${report.totalSales.toStringAsFixed(2)}',
+                    appSettings.formatMoney(report.totalSales),
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   onTap: () {

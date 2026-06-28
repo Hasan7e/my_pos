@@ -8,6 +8,7 @@ import 'package:my_pos/screens/settings_page.dart';
 import 'package:my_pos/data/product_store.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:my_pos/data/app_settings_store.dart';
 import 'package:my_pos/data/sales_store.dart';
 import 'package:my_pos/models/receipt_record.dart';
 import 'package:my_pos/models/sale_line_item.dart';
@@ -127,6 +128,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
 
     final total = _cartTotal;
     final tenderedAmount = _hasAmount ? _currentInputAmount : total;
+    final settings = AppSettingsStore.instance;
 
     if (tenderedAmount < total) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -145,9 +147,9 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
         return AlertDialog(
           title: const Text('Change Due'),
           content: Text(
-            'Total: €${total.toStringAsFixed(2)}\n'
-            'Cash Received: €${tenderedAmount.toStringAsFixed(2)}\n'
-            'Change Due: €${changeDue.toStringAsFixed(2)}',
+            'Total: ${settings.formatMoney(total)}\n'
+            'Cash Received: ${settings.formatMoney(tenderedAmount)}\n'
+            'Change Due: ${settings.formatMoney(changeDue)}',
           ),
           actions: [
             TextButton(
@@ -471,7 +473,11 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Open Item added: €${amount.toStringAsFixed(2)}')),
+      SnackBar(
+        content: Text(
+          'Open Item added: ${AppSettingsStore.instance.formatMoney(amount)}',
+        ),
+      ),
     );
   }
 
@@ -576,7 +582,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Sale completed by $paymentMethod: €${total.toStringAsFixed(2)}',
+          'Sale completed by $paymentMethod: ${AppSettingsStore.instance.formatMoney(total)}',
         ),
       ),
     );
@@ -1160,7 +1166,7 @@ class CartPanel extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '€${total.toStringAsFixed(2)}',
+                    AppSettingsStore.instance.formatMoney(total),
                     style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
@@ -1249,7 +1255,7 @@ class CartItemTile extends StatelessWidget {
             child: Align(
               alignment: Alignment.centerRight,
               child: Text(
-                '€${item.total.toStringAsFixed(2)}',
+                AppSettingsStore.instance.formatMoney(item.total),
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 16,

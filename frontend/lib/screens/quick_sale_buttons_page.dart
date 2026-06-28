@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_ce/hive.dart';
+import 'package:my_pos/data/app_settings_store.dart';
 import 'package:my_pos/data/quick_sale_store.dart';
 import 'package:my_pos/models/quick_sale_config.dart';
 
@@ -78,6 +79,7 @@ class QuickSaleButtonsPage extends StatelessWidget {
       body: ValueListenableBuilder<Box<QuickSaleConfig>>(
         valueListenable: QuickSaleStore.instance.listenable(),
         builder: (context, box, _) {
+          final appSettings = AppSettingsStore.instance;
           final buttons = QuickSaleStore.instance.getButtons();
 
           return ListView.separated(
@@ -90,7 +92,7 @@ class QuickSaleButtonsPage extends StatelessWidget {
               return Card(
                 child: ListTile(
                   title: Text(button.label),
-                  subtitle: Text('€${button.price.toStringAsFixed(2)}'),
+                  subtitle: Text(appSettings.formatMoney(button.price)),
                   trailing: const Icon(Icons.edit),
                   onTap: () => _editButton(context, button),
                 ),

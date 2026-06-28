@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive_ce/hive.dart';
+import 'package:my_pos/data/app_settings_store.dart';
 import 'package:my_pos/data/report_store.dart';
 import 'package:my_pos/data/sales_store.dart';
 import 'package:my_pos/models/sale_record.dart';
@@ -72,6 +73,7 @@ class ZReportPage extends StatelessWidget {
       body: ValueListenableBuilder<Box<SaleRecord>>(
         valueListenable: SalesStore.instance.salesListenable(),
         builder: (context, box, _) {
+          final appSettings = AppSettingsStore.instance;
           final periodSales = ReportStore.instance.getCurrentPeriodSales(
             SalesStore.instance.getSales(),
           );
@@ -115,11 +117,11 @@ class ZReportPage extends StatelessWidget {
                 children: [
                   _ReportRow(
                     label: 'Cash',
-                    value: '€${report.cashTotal.toStringAsFixed(2)}',
+                    value: appSettings.formatMoney(report.cashTotal),
                   ),
                   _ReportRow(
                     label: 'Card',
-                    value: '€${report.cardTotal.toStringAsFixed(2)}',
+                    value: appSettings.formatMoney(report.cardTotal),
                   ),
                 ],
               ),
@@ -129,7 +131,7 @@ class ZReportPage extends StatelessWidget {
                 children: report.vatBreakdown.entries.map((entry) {
                   return _ReportRow(
                     label: 'VAT ${entry.key}%',
-                    value: '€${entry.value.toStringAsFixed(2)}',
+                    value: appSettings.formatMoney(entry.value),
                   );
                 }).toList(),
               ),
@@ -182,6 +184,8 @@ class _SummaryGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final appSettings = AppSettingsStore.instance;
+
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
@@ -192,7 +196,7 @@ class _SummaryGrid extends StatelessWidget {
       children: [
         _SummaryTile(
           label: 'Total Sales',
-          value: '€${report.totalSales.toStringAsFixed(2)}',
+          value: appSettings.formatMoney(report.totalSales),
         ),
         _SummaryTile(
           label: 'Transactions',
@@ -201,7 +205,7 @@ class _SummaryGrid extends StatelessWidget {
         _SummaryTile(label: 'Items Sold', value: report.itemsSold.toString()),
         _SummaryTile(
           label: 'Average Sale',
-          value: '€${report.averageSale.toStringAsFixed(2)}',
+          value: appSettings.formatMoney(report.averageSale),
         ),
       ],
     );

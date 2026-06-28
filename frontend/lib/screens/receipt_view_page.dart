@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:my_pos/data/app_settings_store.dart';
 import 'package:my_pos/models/receipt_record.dart';
 import 'package:my_pos/data/receipt_settings_store.dart';
 
@@ -15,6 +16,7 @@ class ReceiptViewPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final receiptSettings = ReceiptSettingsStore.instance.getSettings();
+    final appSettings = AppSettingsStore.instance;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Receipt'),
@@ -65,11 +67,11 @@ class ReceiptViewPage extends StatelessWidget {
                           Expanded(child: Text(item.name)),
                           Expanded(
                             child: Text(
-                              '${item.quantity} x €${item.unitPrice.toStringAsFixed(2)}',
+                              '${item.quantity} x ${appSettings.formatMoney(item.unitPrice)}',
                               textAlign: TextAlign.center,
                             ),
                           ),
-                          Text('€${item.lineTotal.toStringAsFixed(2)}'),
+                          Text(appSettings.formatMoney(item.lineTotal)),
                         ],
                       ),
                     ),
@@ -84,7 +86,7 @@ class ReceiptViewPage extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '€${receipt.total.toStringAsFixed(2)}',
+                        appSettings.formatMoney(receipt.total),
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ],
@@ -101,7 +103,7 @@ class ReceiptViewPage extends StatelessWidget {
                       child: Row(
                         children: [
                           Expanded(child: Text('VAT ${entry.key}%')),
-                          Text('€${entry.value.toStringAsFixed(2)}'),
+                          Text(appSettings.formatMoney(entry.value)),
                         ],
                       ),
                     ),
