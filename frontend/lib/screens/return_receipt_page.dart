@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:my_pos/data/app_settings_store.dart';
-import 'package:my_pos/models/receipt_record.dart';
 import 'package:my_pos/data/receipt_settings_store.dart';
+import 'package:my_pos/models/return_record.dart';
 
-class ReceiptViewPage extends StatelessWidget {
-  final ReceiptRecord receipt;
+class ReturnReceiptPage extends StatelessWidget {
+  final ReturnRecord returnRecord;
   final bool askToPrint;
 
-  const ReceiptViewPage({
+  const ReturnReceiptPage({
     super.key,
-    required this.receipt,
+    required this.returnRecord,
     this.askToPrint = false,
   });
 
@@ -17,19 +17,20 @@ class ReceiptViewPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final receiptSettings = ReceiptSettingsStore.instance.getSettings();
     final appSettings = AppSettingsStore.instance;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Receipt'),
+        title: const Text('Return Receipt'),
         centerTitle: true,
         actions: [
           IconButton(
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Printing receipt...')),
+                const SnackBar(content: Text('Printing return receipt...')),
               );
             },
             icon: const Icon(Icons.print),
-            tooltip: 'Print Receipt',
+            tooltip: 'Print Return Receipt',
           ),
         ],
       ),
@@ -43,26 +44,40 @@ class ReceiptViewPage extends StatelessWidget {
               child: ListView(
                 children: [
                   Text(
-                    receipt.shopName,
+                    receiptSettings.shopName,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 8),
-                  Text(receipt.shopAddress, textAlign: TextAlign.center),
                   Text(
-                    'VAT No: ${receipt.vatNumber}',
+                    receiptSettings.shopAddress,
+                    textAlign: TextAlign.center,
+                  ),
+                  Text(
+                    'VAT No: ${receiptSettings.vatNumber}',
                     textAlign: TextAlign.center,
                   ),
                   const Divider(height: 24),
-                  Text('Receipt No: ${receipt.id}'),
-                  Text('Sale ID: ${receipt.saleId}'),
-                  Text(
-                    'Date/Time: ${appSettings.formatDateTime(receipt.createdAt)}',
+                  const Text(
+                    'RETURN RECEIPT',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  Text('Server: ${receipt.serverName}'),
-                  Text('Payment: ${receipt.paymentMethod}'),
+                  const SizedBox(height: 12),
+                  Text('Return No: ${returnRecord.id}'),
+                  Text('Original Sale ID: ${returnRecord.originalSaleId}'),
+                  Text(
+                    'Original Receipt No: ${returnRecord.originalReceiptId ?? 'Not found'}',
+                  ),
+                  Text(
+                    'Date/Time: ${appSettings.formatDateTime(returnRecord.createdAt)}',
+                  ),
+                  Text('Manager: ${returnRecord.managerName}'),
+                  Text('Refund Method: ${returnRecord.refundMethod}'),
+                  if (returnRecord.reason.trim().isNotEmpty)
+                    Text('Reason: ${returnRecord.reason}'),
                   const Divider(height: 24),
-                  ...receipt.items.map(
+                  ...returnRecord.items.map(
                     (item) => Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: Row(
@@ -85,47 +100,22 @@ class ReceiptViewPage extends StatelessWidget {
                     children: [
                       const Expanded(
                         child: Text(
-                          'Total',
+                          'Refund Total',
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
                       ),
                       Text(
-                        appSettings.formatMoney(receipt.total),
+                        appSettings.formatMoney(returnRecord.refundTotal),
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'VAT Breakdown',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  ...receipt.vatBreakdown.entries.map(
-                    (entry) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        children: [
-                          Expanded(child: Text('VAT ${entry.key}%')),
-                          Text(appSettings.formatMoney(entry.value)),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (receiptSettings.footerMessage.trim().isNotEmpty) ...[
-                    const Divider(height: 24),
-                    Text(
-                      receiptSettings.footerMessage,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ],
                   if (askToPrint) ...[
                     const SizedBox(height: 24),
                     const Divider(),
                     const SizedBox(height: 12),
                     const Text(
-                      'Would the customer like a printed copy?',
+                      'Would the customer like a printed return receipt?',
                       textAlign: TextAlign.center,
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
@@ -134,9 +124,7 @@ class ReceiptViewPage extends StatelessWidget {
                       children: [
                         Expanded(
                           child: OutlinedButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
+                            onPressed: () => Navigator.pop(context),
                             child: const Text('No Copy'),
                           ),
                         ),
@@ -146,7 +134,7 @@ class ReceiptViewPage extends StatelessWidget {
                             onPressed: () {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
-                                  content: Text('Printing receipt...'),
+                                  content: Text('Printing return receipt...'),
                                 ),
                               );
                               Navigator.pop(context);

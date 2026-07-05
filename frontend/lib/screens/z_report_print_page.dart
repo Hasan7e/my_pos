@@ -60,14 +60,18 @@ class ZReportPrintPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text('Report No: ${report.id}'),
-                  Text('From: ${report.startTime.toLocal()}'),
-                  Text('To: ${report.endTime.toLocal()}'),
-                  Text('Printed: ${DateTime.now().toLocal()}'),
+                  Text('From: ${appSettings.formatDateTime(report.startTime)}'),
+                  Text('To: ${appSettings.formatDateTime(report.endTime)}'),
+                  Text(
+                    'Printed: ${appSettings.formatDateTime(DateTime.now())}',
+                  ),
                   if (report.closedAt != null)
-                    Text('Closed: ${report.closedAt!.toLocal()}'),
+                    Text(
+                      'Closed: ${appSettings.formatDateTime(report.closedAt!)}',
+                    ),
                   const Divider(height: 24),
                   _ThermalReportRow(
-                    label: 'Total Sales',
+                    label: 'Net Sales',
                     value: appSettings.formatMoney(report.totalSales),
                     isStrong: true,
                   ),
@@ -76,7 +80,7 @@ class ZReportPrintPage extends StatelessWidget {
                     value: report.transactionCount.toString(),
                   ),
                   _ThermalReportRow(
-                    label: 'Items Sold',
+                    label: 'Items Sold Net',
                     value: report.itemsSold.toString(),
                   ),
                   _ThermalReportRow(

@@ -3,6 +3,7 @@ import 'package:hive_ce/hive.dart';
 import 'package:my_pos/data/app_settings_store.dart';
 import 'package:my_pos/data/report_store.dart';
 import 'package:my_pos/data/sales_store.dart';
+import 'package:my_pos/models/return_record.dart';
 import 'package:my_pos/models/sale_record.dart';
 import 'package:my_pos/models/z_report_record.dart';
 import 'package:my_pos/screens/z_report_print_page.dart';
@@ -72,70 +73,84 @@ class ZReportPage extends StatelessWidget {
       appBar: AppBar(title: const Text('Z Report'), centerTitle: true),
       body: ValueListenableBuilder<Box<SaleRecord>>(
         valueListenable: SalesStore.instance.salesListenable(),
-        builder: (context, box, _) {
-          final appSettings = AppSettingsStore.instance;
-          final periodSales = ReportStore.instance.getCurrentPeriodSales(
-            SalesStore.instance.getSales(),
-          );
-          final report = _ZReportData.fromSales(periodSales);
+        builder: (context, salesBox, _) {
+          return ValueListenableBuilder<Box<ReturnRecord>>(
+            valueListenable: SalesStore.instance.returnsListenable(),
+            builder: (context, returnsBox, _) {
+              final appSettings = AppSettingsStore.instance;
+              final periodSales = ReportStore.instance.getCurrentPeriodSales(
+                SalesStore.instance.getSales(),
+              );
+              final periodReturns = ReportStore.instance
+                  .getCurrentPeriodReturns(SalesStore.instance.getReturns());
+              final report = _ZReportData.fromRecords(
+                sales: periodSales,
+                returns: periodReturns,
+              );
 
-          if (report.transactionCount == 0) {
-            return const Center(
-              child: Text('No sales in the current trading period'),
-            );
-          }
+              if (report.transactionCount == 0 && report.returnCount == 0) {
+                return const Center(
+                  child: Text('No sales in the current trading period'),
+                );
+              }
 
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              _ReportHeader(report: report),
-              const SizedBox(height: 16),
-              Row(
+              return ListView(
+                padding: const EdgeInsets.all(16),
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _openPrintPreview(context, report),
-                      icon: const Icon(Icons.print),
-                      label: const Text('Preview Print'),
-                    ),
+                  _ReportHeader(report: report),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _openPrintPreview(context, report),
+                          icon: const Icon(Icons.print),
+                          label: const Text('Preview Print'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () => _generateZReport(context, report),
+                          icon: const Icon(Icons.lock_clock),
+                          label: const Text('Generate Z Report'),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: () => _generateZReport(context, report),
-                      icon: const Icon(Icons.lock_clock),
-                      label: const Text('Generate Z Report'),
-                    ),
+                  const SizedBox(height: 16),
+                  _SummaryGrid(report: report),
+                  const SizedBox(height: 16),
+                  _ReportSection(
+                    title: 'Payment Breakdown',
+                    children: [
+                      _ReportRow(
+                        label: 'Cash Net',
+                        value: appSettings.formatMoney(report.cashTotal),
+                      ),
+                      _ReportRow(
+                        label: 'Card Net',
+                        value: appSettings.formatMoney(report.cardTotal),
+                      ),
+                      _ReportRow(
+                        label: 'Refunds',
+                        value: appSettings.formatMoney(report.refundTotal),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _ReportSection(
+                    title: 'VAT Breakdown',
+                    children: report.vatBreakdown.entries.map((entry) {
+                      return _ReportRow(
+                        label: 'VAT ${entry.key}%',
+                        value: appSettings.formatMoney(entry.value),
+                      );
+                    }).toList(),
                   ),
                 ],
-              ),
-              const SizedBox(height: 16),
-              _SummaryGrid(report: report),
-              const SizedBox(height: 16),
-              _ReportSection(
-                title: 'Payment Breakdown',
-                children: [
-                  _ReportRow(
-                    label: 'Cash',
-                    value: appSettings.formatMoney(report.cashTotal),
-                  ),
-                  _ReportRow(
-                    label: 'Card',
-                    value: appSettings.formatMoney(report.cardTotal),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _ReportSection(
-                title: 'VAT Breakdown',
-                children: report.vatBreakdown.entries.map((entry) {
-                  return _ReportRow(
-                    label: 'VAT ${entry.key}%',
-                    value: appSettings.formatMoney(entry.value),
-                  );
-                }).toList(),
-              ),
-            ],
+              );
+            },
           );
         },
       ),
@@ -151,6 +166,7 @@ class _ReportHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final lastClose = ReportStore.instance.getLastZCloseTime();
+    final appSettings = AppSettingsStore.instance;
 
     return Card(
       child: Padding(
@@ -163,9 +179,11 @@ class _ReportHeader extends StatelessWidget {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
-            Text('Last Z Close: ${lastClose?.toLocal() ?? 'Never'}'),
-            Text('From: ${report.startTime.toLocal()}'),
-            Text('To: ${report.endTime.toLocal()}'),
+            Text(
+              'Last Z Close: ${lastClose == null ? 'Never' : appSettings.formatDateTime(lastClose)}',
+            ),
+            Text('From: ${appSettings.formatDateTime(report.startTime)}'),
+            Text('To: ${appSettings.formatDateTime(report.endTime)}'),
             const SizedBox(height: 8),
             const Text(
               'Generating this report will close the current trading period.',
@@ -195,8 +213,16 @@ class _SummaryGrid extends StatelessWidget {
       childAspectRatio: 2.4,
       children: [
         _SummaryTile(
-          label: 'Total Sales',
+          label: 'Net Sales',
           value: appSettings.formatMoney(report.totalSales),
+        ),
+        _SummaryTile(
+          label: 'Gross Sales',
+          value: appSettings.formatMoney(report.grossSales),
+        ),
+        _SummaryTile(
+          label: 'Refunds',
+          value: appSettings.formatMoney(report.refundTotal),
         ),
         _SummaryTile(
           label: 'Transactions',
@@ -204,9 +230,14 @@ class _SummaryGrid extends StatelessWidget {
         ),
         _SummaryTile(label: 'Items Sold', value: report.itemsSold.toString()),
         _SummaryTile(
+          label: 'Items Returned',
+          value: report.itemsReturned.toString(),
+        ),
+        _SummaryTile(
           label: 'Average Sale',
           value: appSettings.formatMoney(report.averageSale),
         ),
+        _SummaryTile(label: 'Returns', value: report.returnCount.toString()),
       ],
     );
   }
@@ -294,6 +325,10 @@ class _ZReportData {
   final DateTime endTime;
   final int transactionCount;
   final int itemsSold;
+  final int returnCount;
+  final int itemsReturned;
+  final double grossSales;
+  final double refundTotal;
   final double totalSales;
   final double cashTotal;
   final double cardTotal;
@@ -304,6 +339,10 @@ class _ZReportData {
     required this.endTime,
     required this.transactionCount,
     required this.itemsSold,
+    required this.returnCount,
+    required this.itemsReturned,
+    required this.grossSales,
+    required this.refundTotal,
     required this.totalSales,
     required this.cashTotal,
     required this.cardTotal,
@@ -320,7 +359,7 @@ class _ZReportData {
       endTime: endTime,
       closedAt: closedAt,
       transactionCount: transactionCount,
-      itemsSold: itemsSold,
+      itemsSold: itemsSold - itemsReturned,
       totalSales: totalSales,
       cashTotal: cashTotal,
       cardTotal: cardTotal,
@@ -328,18 +367,25 @@ class _ZReportData {
     );
   }
 
-  factory _ZReportData.fromSales(List<SaleRecord> sales) {
+  factory _ZReportData.fromRecords({
+    required List<SaleRecord> sales,
+    required List<ReturnRecord> returns,
+  }) {
     final sortedSales = sales.toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    final sortedReturns = returns.toList()
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
     final now = DateTime.now();
     final Map<String, double> vatBreakdown = {};
-    var totalSales = 0.0;
+    var grossSales = 0.0;
+    var refundTotal = 0.0;
     var cashTotal = 0.0;
     var cardTotal = 0.0;
     var itemsSold = 0;
+    var itemsReturned = 0;
 
     for (final sale in sortedSales) {
-      totalSales += sale.total;
+      grossSales += sale.total;
       if (sale.paymentMethod.toLowerCase() == 'cash') {
         cashTotal += sale.total;
       } else if (sale.paymentMethod.toLowerCase() == 'card') {
@@ -355,12 +401,39 @@ class _ZReportData {
       }
     }
 
+    for (final returnRecord in sortedReturns) {
+      refundTotal += returnRecord.refundTotal;
+      if (returnRecord.refundMethod.toLowerCase().contains('cash')) {
+        cashTotal -= returnRecord.refundTotal;
+      } else if (returnRecord.refundMethod.toLowerCase().contains('card')) {
+        cardTotal -= returnRecord.refundTotal;
+      }
+
+      for (final item in returnRecord.items) {
+        itemsReturned += item.quantity;
+        final rateKey = item.vatRate.toStringAsFixed(
+          item.vatRate % 1 == 0 ? 0 : 1,
+        );
+        final vatAmount = item.lineTotal * item.vatRate / (100 + item.vatRate);
+        vatBreakdown[rateKey] = (vatBreakdown[rateKey] ?? 0) - vatAmount;
+      }
+    }
+
+    final allDates = [
+      ...sortedSales.map((sale) => sale.createdAt),
+      ...sortedReturns.map((returnRecord) => returnRecord.createdAt),
+    ]..sort();
+
     return _ZReportData(
-      startTime: sortedSales.isEmpty ? now : sortedSales.first.createdAt,
-      endTime: sortedSales.isEmpty ? now : sortedSales.last.createdAt,
+      startTime: allDates.isEmpty ? now : allDates.first,
+      endTime: allDates.isEmpty ? now : allDates.last,
       transactionCount: sortedSales.length,
       itemsSold: itemsSold,
-      totalSales: totalSales,
+      returnCount: sortedReturns.length,
+      itemsReturned: itemsReturned,
+      grossSales: grossSales,
+      refundTotal: refundTotal,
+      totalSales: grossSales - refundTotal,
       cashTotal: cashTotal,
       cardTotal: cardTotal,
       vatBreakdown: vatBreakdown,

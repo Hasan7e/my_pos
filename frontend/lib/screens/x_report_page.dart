@@ -4,6 +4,7 @@ import 'package:my_pos/data/app_settings_store.dart';
 import 'package:my_pos/data/receipt_settings_store.dart';
 import 'package:my_pos/data/report_store.dart';
 import 'package:my_pos/data/sales_store.dart';
+import 'package:my_pos/models/return_record.dart';
 import 'package:my_pos/models/sale_line_item.dart';
 import 'package:my_pos/models/sale_record.dart';
 
@@ -23,64 +24,78 @@ class XReportPage extends StatelessWidget {
       appBar: AppBar(title: const Text('X Report'), centerTitle: true),
       body: ValueListenableBuilder<Box<SaleRecord>>(
         valueListenable: SalesStore.instance.salesListenable(),
-        builder: (context, box, _) {
-          final appSettings = AppSettingsStore.instance;
-          final periodSales = ReportStore.instance.getCurrentPeriodSales(
-            SalesStore.instance.getSales(),
-          );
-          final report = _XReportData.fromSales(periodSales);
+        builder: (context, salesBox, _) {
+          return ValueListenableBuilder<Box<ReturnRecord>>(
+            valueListenable: SalesStore.instance.returnsListenable(),
+            builder: (context, returnsBox, _) {
+              final appSettings = AppSettingsStore.instance;
+              final periodSales = ReportStore.instance.getCurrentPeriodSales(
+                SalesStore.instance.getSales(),
+              );
+              final periodReturns = ReportStore.instance
+                  .getCurrentPeriodReturns(SalesStore.instance.getReturns());
+              final report = _XReportData.fromRecords(
+                sales: periodSales,
+                returns: periodReturns,
+              );
 
-          if (report.transactionCount == 0) {
-            return const Center(child: Text('No sales recorded yet'));
-          }
+              if (report.transactionCount == 0 && report.returnCount == 0) {
+                return const Center(child: Text('No sales recorded yet'));
+              }
 
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              _ReportHeader(report: report),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: () => _openPrintPreview(context, report),
-                icon: const Icon(Icons.print),
-                label: const Text('Print X Report'),
-              ),
-              const SizedBox(height: 16),
-              _SummaryGrid(report: report),
-              const SizedBox(height: 16),
-              _ReportSection(
-                title: 'Payment Breakdown',
+              return ListView(
+                padding: const EdgeInsets.all(16),
                 children: [
-                  _ReportRow(
-                    label: 'Cash',
-                    value: appSettings.formatMoney(report.cashTotal),
+                  _ReportHeader(report: report),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: () => _openPrintPreview(context, report),
+                    icon: const Icon(Icons.print),
+                    label: const Text('Print X Report'),
                   ),
-                  _ReportRow(
-                    label: 'Card',
-                    value: appSettings.formatMoney(report.cardTotal),
+                  const SizedBox(height: 16),
+                  _SummaryGrid(report: report),
+                  const SizedBox(height: 16),
+                  _ReportSection(
+                    title: 'Payment Breakdown',
+                    children: [
+                      _ReportRow(
+                        label: 'Cash Net',
+                        value: appSettings.formatMoney(report.cashTotal),
+                      ),
+                      _ReportRow(
+                        label: 'Card Net',
+                        value: appSettings.formatMoney(report.cardTotal),
+                      ),
+                      _ReportRow(
+                        label: 'Refunds',
+                        value: appSettings.formatMoney(report.refundTotal),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  _ReportSection(
+                    title: 'VAT Breakdown',
+                    children: report.vatBreakdown.entries.map((entry) {
+                      return _ReportRow(
+                        label: 'VAT ${entry.key}%',
+                        value: appSettings.formatMoney(entry.value),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 16),
+                  _ReportSection(
+                    title: 'Sales By Item (Net)',
+                    children: report.itemSummaries.map((item) {
+                      return _ReportRow(
+                        label: '${item.name} x${item.quantity}',
+                        value: appSettings.formatMoney(item.total),
+                      );
+                    }).toList(),
                   ),
                 ],
-              ),
-              const SizedBox(height: 16),
-              _ReportSection(
-                title: 'VAT Breakdown',
-                children: report.vatBreakdown.entries.map((entry) {
-                  return _ReportRow(
-                    label: 'VAT ${entry.key}%',
-                    value: appSettings.formatMoney(entry.value),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-              _ReportSection(
-                title: 'Sales By Item',
-                children: report.itemSummaries.map((item) {
-                  return _ReportRow(
-                    label: '${item.name} x${item.quantity}',
-                    value: appSettings.formatMoney(item.total),
-                  );
-                }).toList(),
-              ),
-            ],
+              );
+            },
           );
         },
       ),
@@ -149,9 +164,17 @@ class _XReportPrintPage extends StatelessWidget {
                   Text('Printed: ${DateTime.now().toLocal()}'),
                   const Divider(height: 24),
                   _ThermalReportRow(
-                    label: 'Total Sales',
+                    label: 'Net Sales',
                     value: appSettings.formatMoney(report.totalSales),
                     isStrong: true,
+                  ),
+                  _ThermalReportRow(
+                    label: 'Gross Sales',
+                    value: appSettings.formatMoney(report.grossSales),
+                  ),
+                  _ThermalReportRow(
+                    label: 'Refunds',
+                    value: appSettings.formatMoney(report.refundTotal),
                   ),
                   _ThermalReportRow(
                     label: 'Transactions',
@@ -160,6 +183,10 @@ class _XReportPrintPage extends StatelessWidget {
                   _ThermalReportRow(
                     label: 'Items Sold',
                     value: report.itemsSold.toString(),
+                  ),
+                  _ThermalReportRow(
+                    label: 'Items Returned',
+                    value: report.itemsReturned.toString(),
                   ),
                   _ThermalReportRow(
                     label: 'Average Sale',
@@ -302,14 +329,26 @@ class _SummaryGrid extends StatelessWidget {
       childAspectRatio: 2.4,
       children: [
         _SummaryTile(
-          label: 'Total Sales',
+          label: 'Net Sales',
           value: appSettings.formatMoney(report.totalSales),
+        ),
+        _SummaryTile(
+          label: 'Gross Sales',
+          value: appSettings.formatMoney(report.grossSales),
+        ),
+        _SummaryTile(
+          label: 'Refunds',
+          value: appSettings.formatMoney(report.refundTotal),
         ),
         _SummaryTile(
           label: 'Transactions',
           value: report.transactionCount.toString(),
         ),
         _SummaryTile(label: 'Items Sold', value: report.itemsSold.toString()),
+        _SummaryTile(
+          label: 'Items Returned',
+          value: report.itemsReturned.toString(),
+        ),
         _SummaryTile(
           label: 'Average Sale',
           value: appSettings.formatMoney(report.averageSale),
@@ -401,6 +440,10 @@ class _XReportData {
   final DateTime endTime;
   final int transactionCount;
   final int itemsSold;
+  final int returnCount;
+  final int itemsReturned;
+  final double grossSales;
+  final double refundTotal;
   final double totalSales;
   final double cashTotal;
   final double cardTotal;
@@ -412,6 +455,10 @@ class _XReportData {
     required this.endTime,
     required this.transactionCount,
     required this.itemsSold,
+    required this.returnCount,
+    required this.itemsReturned,
+    required this.grossSales,
+    required this.refundTotal,
     required this.totalSales,
     required this.cashTotal,
     required this.cardTotal,
@@ -422,19 +469,26 @@ class _XReportData {
   double get averageSale =>
       transactionCount == 0 ? 0 : totalSales / transactionCount;
 
-  factory _XReportData.fromSales(List<SaleRecord> sales) {
+  factory _XReportData.fromRecords({
+    required List<SaleRecord> sales,
+    required List<ReturnRecord> returns,
+  }) {
     final sortedSales = sales.toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+    final sortedReturns = returns.toList()
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
     final now = DateTime.now();
     final Map<String, double> vatBreakdown = {};
     final Map<String, _ItemSummary> itemMap = {};
-    var totalSales = 0.0;
+    var grossSales = 0.0;
+    var refundTotal = 0.0;
     var cashTotal = 0.0;
     var cardTotal = 0.0;
     var itemsSold = 0;
+    var itemsReturned = 0;
 
     for (final sale in sortedSales) {
-      totalSales += sale.total;
+      grossSales += sale.total;
       if (sale.paymentMethod.toLowerCase() == 'cash') {
         cashTotal += sale.total;
       } else if (sale.paymentMethod.toLowerCase() == 'card') {
@@ -458,12 +512,52 @@ class _XReportData {
       }
     }
 
+    for (final returnRecord in sortedReturns) {
+      refundTotal += returnRecord.refundTotal;
+      if (returnRecord.refundMethod.toLowerCase().contains('cash')) {
+        cashTotal -= returnRecord.refundTotal;
+      } else if (returnRecord.refundMethod.toLowerCase().contains('card')) {
+        cardTotal -= returnRecord.refundTotal;
+      }
+
+      for (final item in returnRecord.items) {
+        itemsReturned += item.quantity;
+        final rateKey = item.vatRate.toStringAsFixed(
+          item.vatRate % 1 == 0 ? 0 : 1,
+        );
+        final vatAmount = item.lineTotal * item.vatRate / (100 + item.vatRate);
+        vatBreakdown[rateKey] = (vatBreakdown[rateKey] ?? 0) - vatAmount;
+
+        final key = '${item.name}|${item.unitPrice}|${item.vatRate}';
+        final existing = itemMap[key];
+        if (existing == null) {
+          itemMap[key] = _ItemSummary(
+            name: item.name,
+            quantity: -item.quantity,
+            total: -item.lineTotal,
+          );
+        } else {
+          existing.quantity -= item.quantity;
+          existing.total -= item.lineTotal;
+        }
+      }
+    }
+
+    final allDates = [
+      ...sortedSales.map((sale) => sale.createdAt),
+      ...sortedReturns.map((returnRecord) => returnRecord.createdAt),
+    ]..sort();
+
     return _XReportData(
-      startTime: sortedSales.isEmpty ? now : sortedSales.first.createdAt,
-      endTime: sortedSales.isEmpty ? now : sortedSales.last.createdAt,
+      startTime: allDates.isEmpty ? now : allDates.first,
+      endTime: allDates.isEmpty ? now : allDates.last,
       transactionCount: sortedSales.length,
       itemsSold: itemsSold,
-      totalSales: totalSales,
+      returnCount: sortedReturns.length,
+      itemsReturned: itemsReturned,
+      grossSales: grossSales,
+      refundTotal: refundTotal,
+      totalSales: grossSales - refundTotal,
       cashTotal: cashTotal,
       cardTotal: cardTotal,
       vatBreakdown: vatBreakdown,

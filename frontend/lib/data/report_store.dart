@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:my_pos/models/app_config.dart';
+import 'package:my_pos/models/return_record.dart';
 import 'package:my_pos/models/sale_record.dart';
 import 'package:my_pos/models/z_report_record.dart';
 
@@ -28,6 +29,15 @@ class ReportStore {
     if (lastClose == null) return sales;
 
     return sales.where((sale) => sale.createdAt.isAfter(lastClose)).toList();
+  }
+
+  List<ReturnRecord> getCurrentPeriodReturns(List<ReturnRecord> returns) {
+    final lastClose = getLastZCloseTime();
+    if (lastClose == null) return returns;
+
+    return returns
+        .where((returnRecord) => returnRecord.createdAt.isAfter(lastClose))
+        .toList();
   }
 
   Future<void> closeCurrentPeriod(DateTime closedAt) async {

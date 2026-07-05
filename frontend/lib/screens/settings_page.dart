@@ -67,7 +67,7 @@ class SettingsPage extends StatelessWidget {
         onTap: () {
           _openManagerOnlyPage(
             context,
-            const ManagerMenuPage(),
+            ManagerMenuPage(currentUser: currentUser),
             'Manager\'s Menu',
           );
         },

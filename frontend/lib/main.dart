@@ -20,6 +20,8 @@ import 'package:my_pos/data/user_store.dart';
 import 'package:my_pos/models/app_config.dart';
 import 'package:my_pos/models/app_user.dart';
 import 'package:my_pos/data/receipt_settings_store.dart';
+import 'package:my_pos/models/return_line_item.dart';
+import 'package:my_pos/models/return_record.dart';
 import 'package:my_pos/models/z_report_record.dart';
 
 // this is the code that only works for desktop or mac for saving data
@@ -63,10 +65,13 @@ Future<void> main() async {
   Hive.registerAdapter(AppUserAdapter());
   Hive.registerAdapter(AppConfigAdapter());
   Hive.registerAdapter(ZReportRecordAdapter());
+  Hive.registerAdapter(ReturnLineItemAdapter());
+  Hive.registerAdapter(ReturnRecordAdapter());
   await Hive.openBox<Product>('products');
   await Hive.openBox<SaleRecord>('sales');
   await Hive.openBox<ReceiptRecord>('receipts');
   await Hive.openBox<ZReportRecord>('z_reports');
+  await Hive.openBox<ReturnRecord>('returns');
   await Hive.openBox<QuickSaleConfig>('quick_sales');
   await QuickSaleStore.instance.ensureDefaults();
   await Hive.openBox<AppUser>('users');
