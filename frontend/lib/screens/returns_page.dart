@@ -62,7 +62,23 @@ class _ReturnsPageState extends State<ReturnsPage> {
     final sale = _selectedSale;
     if (sale == null) return;
 
-    final maxQuantity = sale.items[itemIndex].quantity;
+    final item = sale.items[itemIndex];
+    final alreadyReturned = SalesStore.instance.returnedQuantityForSaleItem(
+      saleId: sale.id,
+      itemName: item.name,
+      barcode: item.barcode,
+      unitPrice: item.unitPrice,
+      vatRate: item.vatRate,
+    );
+    final maxQuantity = item.quantity - alreadyReturned;
+
+    if (maxQuantity <= 0 && delta > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('${item.name} has already been fully refunded')),
+      );
+      return;
+    }
+
     final currentQuantity = _returnQuantities[itemIndex] ?? 0;
     final nextQuantity = (currentQuantity + delta).clamp(0, maxQuantity);
 
@@ -86,6 +102,36 @@ class _ReturnsPageState extends State<ReturnsPage> {
 
     final receipt = SalesStore.instance.getReceiptBySaleId(sale.id);
     final refundTotal = _refundTotal;
+    final unavailableItems = <String>[];
+
+    for (final entry in _returnQuantities.entries) {
+      final item = sale.items[entry.key];
+      final alreadyReturned = SalesStore.instance.returnedQuantityForSaleItem(
+        saleId: sale.id,
+        itemName: item.name,
+        barcode: item.barcode,
+        unitPrice: item.unitPrice,
+        vatRate: item.vatRate,
+      );
+      final availableQuantity = item.quantity - alreadyReturned;
+
+      if (entry.value > availableQuantity) {
+        unavailableItems.add(item.name);
+      }
+    }
+
+    if (unavailableItems.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${unavailableItems.join(', ')} has already been refunded',
+          ),
+        ),
+      );
+      setState(() => _returnQuantities.clear());
+      return;
+    }
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -326,12 +372,24 @@ class _ReturnEditor extends StatelessWidget {
           final index = entry.key;
           final item = entry.value;
           final returnQuantity = returnQuantities[index] ?? 0;
+          final alreadyReturned = SalesStore.instance
+              .returnedQuantityForSaleItem(
+                saleId: sale.id,
+                itemName: item.name,
+                barcode: item.barcode,
+                unitPrice: item.unitPrice,
+                vatRate: item.vatRate,
+              );
+          final availableQuantity = item.quantity - alreadyReturned;
+          final isFullyRefunded = availableQuantity <= 0;
 
           return Card(
             child: ListTile(
               title: Text(item.name),
               subtitle: Text(
-                'Sold: ${item.quantity} | Barcode: ${item.barcode ?? 'N/A'} | ${AppSettingsStore.instance.formatMoney(item.unitPrice)} each',
+                isFullyRefunded
+                    ? 'Sold: ${item.quantity} | Already returned: $alreadyReturned | Already fully refunded'
+                    : 'Sold: ${item.quantity} | Already returned: $alreadyReturned | Available: $availableQuantity | Barcode: ${item.barcode ?? 'N/A'} | ${AppSettingsStore.instance.formatMoney(item.unitPrice)} each',
               ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -345,7 +403,9 @@ class _ReturnEditor extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   IconButton(
-                    onPressed: () => onQuantityChanged(index, 1),
+                    onPressed: isFullyRefunded
+                        ? null
+                        : () => onQuantityChanged(index, 1),
                     icon: const Icon(Icons.add_circle_outline),
                   ),
                 ],

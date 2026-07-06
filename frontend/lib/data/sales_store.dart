@@ -27,6 +27,34 @@ class SalesStore {
   List<ReturnRecord> getReturns() =>
       _returnsBox.values.toList().reversed.toList();
 
+  int returnedQuantityForSaleItem({
+    required String saleId,
+    required String itemName,
+    required String? barcode,
+    required double unitPrice,
+    required double vatRate,
+  }) {
+    var returnedQuantity = 0;
+
+    for (final returnRecord in _returnsBox.values) {
+      if (returnRecord.originalSaleId != saleId) continue;
+
+      for (final item in returnRecord.items) {
+        final sameItem =
+            item.name == itemName &&
+            item.barcode == barcode &&
+            item.unitPrice == unitPrice &&
+            item.vatRate == vatRate;
+
+        if (sameItem) {
+          returnedQuantity += item.quantity;
+        }
+      }
+    }
+
+    return returnedQuantity;
+  }
+
   Future<void> saveSale(SaleRecord sale) async {
     await _salesBox.put(sale.id, sale);
     await _salesBox.flush();
@@ -68,8 +96,7 @@ class SalesStore {
         return barcode.contains(normalized) ||
             item.name.toLowerCase().contains(normalized);
       });
-    }).toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    }).toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
   Future<void> saveReturn(ReturnRecord returnRecord) async {
