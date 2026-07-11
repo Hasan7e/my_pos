@@ -683,6 +683,8 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
       total: total,
       items: lineItems,
       vatBreakdown: vatBreakdown,
+      cashPaid: _cashPaidAmount,
+      cardPaid: _cardPaidAmount,
     );
 
     await SalesStore.instance.saveSale(sale);

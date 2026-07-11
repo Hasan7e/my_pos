@@ -38,6 +38,12 @@ class ReceiptRecord extends HiveObject {
   @HiveField(10)
   Map<String, double> vatBreakdown;
 
+  @HiveField(11)
+  double? cashPaid;
+
+  @HiveField(12)
+  double? cardPaid;
+
   ReceiptRecord({
     required this.id,
     required this.saleId,
@@ -50,5 +56,7 @@ class ReceiptRecord extends HiveObject {
     required this.total,
     required this.items,
     required this.vatBreakdown,
+    this.cashPaid,
+    this.cardPaid,
   });
 }
