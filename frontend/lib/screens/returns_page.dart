@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:my_pos/data/app_settings_store.dart';
+import 'package:my_pos/data/product_store.dart';
 import 'package:my_pos/data/sales_store.dart';
 import 'package:my_pos/models/return_line_item.dart';
 import 'package:my_pos/models/return_record.dart';
@@ -181,6 +182,7 @@ class _ReturnsPageState extends State<ReturnsPage> {
     );
 
     await SalesStore.instance.saveReturn(returnRecord);
+    await ProductStore.instance.increaseStockForReturnItems(returnItems);
 
     if (!mounted) return;
 

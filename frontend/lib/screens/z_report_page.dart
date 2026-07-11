@@ -386,11 +386,8 @@ class _ZReportData {
 
     for (final sale in sortedSales) {
       grossSales += sale.total;
-      if (sale.paymentMethod.toLowerCase() == 'cash') {
-        cashTotal += sale.total;
-      } else if (sale.paymentMethod.toLowerCase() == 'card') {
-        cardTotal += sale.total;
-      }
+      cashTotal += _cashAmountForSale(sale);
+      cardTotal += _cardAmountForSale(sale);
 
       for (final entry in sale.vatBreakdown.entries) {
         vatBreakdown[entry.key] = (vatBreakdown[entry.key] ?? 0) + entry.value;
@@ -438,5 +435,33 @@ class _ZReportData {
       cardTotal: cardTotal,
       vatBreakdown: vatBreakdown,
     );
+  }
+
+  static double _cashAmountForSale(SaleRecord sale) {
+    if (sale.cashPaid != null) return sale.cashPaid!;
+
+    final paymentMethod = sale.paymentMethod.toLowerCase();
+    if (paymentMethod == 'cash') return sale.total;
+    if (!paymentMethod.startsWith('split')) return 0;
+
+    return _splitAmountForLabel(sale.paymentMethod, 'Cash');
+  }
+
+  static double _cardAmountForSale(SaleRecord sale) {
+    if (sale.cardPaid != null) return sale.cardPaid!;
+
+    final paymentMethod = sale.paymentMethod.toLowerCase();
+    if (paymentMethod == 'card') return sale.total;
+    if (!paymentMethod.startsWith('split')) return 0;
+
+    return _splitAmountForLabel(sale.paymentMethod, 'Card');
+  }
+
+  static double _splitAmountForLabel(String paymentMethod, String label) {
+    final regex = RegExp('$label: ([0-9]+(?:\\.[0-9]+)?)');
+    final match = regex.firstMatch(paymentMethod);
+    if (match == null) return 0;
+
+    return double.tryParse(match.group(1) ?? '') ?? 0;
   }
 }

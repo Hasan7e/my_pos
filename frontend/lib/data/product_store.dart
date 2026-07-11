@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:my_pos/models/product.dart';
+import 'package:my_pos/models/return_line_item.dart';
+import 'package:my_pos/models/sale_line_item.dart';
 
 class ProductStore {
   ProductStore._();
@@ -23,6 +25,30 @@ class ProductStore {
     await _box.flush();
   }
 
+  Future<void> reduceStockForSaleItems(List<SaleLineItem> items) async {
+    for (final item in items) {
+      final product = _findBySaleLineItem(item);
+      if (product?.stockAmount == null) continue;
+
+      product!.stockAmount = product.stockAmount! - item.quantity;
+      await _box.put(product.id, product);
+    }
+
+    await _box.flush();
+  }
+
+  Future<void> increaseStockForReturnItems(List<ReturnLineItem> items) async {
+    for (final item in items) {
+      final product = _findByReturnLineItem(item);
+      if (product?.stockAmount == null) continue;
+
+      product!.stockAmount = product.stockAmount! + item.quantity;
+      await _box.put(product.id, product);
+    }
+
+    await _box.flush();
+  }
+
   Future<void> deleteProduct(String id) async {
     await _box.delete(id);
     await _box.flush();
@@ -35,6 +61,36 @@ class ProductStore {
         return product;
       }
     }
+    return null;
+  }
+
+  Product? _findBySaleLineItem(SaleLineItem item) {
+    if (item.barcode != null && item.barcode!.trim().isNotEmpty) {
+      final product = findByBarcode(item.barcode!);
+      if (product != null) return product;
+    }
+
+    return _findByNameAndPrice(item.name, item.unitPrice, item.vatRate);
+  }
+
+  Product? _findByReturnLineItem(ReturnLineItem item) {
+    if (item.barcode != null && item.barcode!.trim().isNotEmpty) {
+      final product = findByBarcode(item.barcode!);
+      if (product != null) return product;
+    }
+
+    return _findByNameAndPrice(item.name, item.unitPrice, item.vatRate);
+  }
+
+  Product? _findByNameAndPrice(String name, double salePrice, double vatRate) {
+    for (final product in _box.values) {
+      if (product.name == name &&
+          product.salePrice == salePrice &&
+          product.vatRate == vatRate) {
+        return product;
+      }
+    }
+
     return null;
   }
 

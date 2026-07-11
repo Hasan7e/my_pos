@@ -108,8 +108,21 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
   String _loggedInUser = '';
   AppUser? _currentUser;
   int _currentInputCents = 0;
+  int _cashPaidCents = 0;
+  int _cardPaidCents = 0;
 
   double get _currentInputAmount => _currentInputCents / 100;
+  double get _cashPaidAmount => _cashPaidCents / 100;
+  double get _cardPaidAmount => _cardPaidCents / 100;
+  double get _amountPaid => (_cashPaidCents + _cardPaidCents) / 100;
+  double get _remainingBalance => _remainingBalanceCents / 100;
+
+  int get _cartTotalCents => (_cartTotal * 100).round();
+
+  int get _remainingBalanceCents {
+    final remaining = _cartTotalCents - _cashPaidCents - _cardPaidCents;
+    return remaining < 0 ? 0 : remaining;
+  }
 
   int? _selectedCartIndex;
 
@@ -131,20 +144,32 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
       return;
     }
 
-    final total = _cartTotal;
-    final tenderedAmount = _hasAmount ? _currentInputAmount : total;
+    final remainingCents = _remainingBalanceCents;
+    if (remainingCents <= 0) {
+      await _completeSale();
+      return;
+    }
+
+    final tenderedCents = _hasAmount ? _currentInputCents : remainingCents;
     final settings = AppSettingsStore.instance;
 
-    if (tenderedAmount < total) {
+    if (tenderedCents < remainingCents) {
+      setState(() {
+        _cashPaidCents += tenderedCents;
+        _currentInputCents = 0;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cash received is less than the sale total'),
+        SnackBar(
+          content: Text(
+            'Partial cash accepted. Remaining: ${settings.formatMoney(_remainingBalance)}',
+          ),
         ),
       );
       return;
     }
 
-    final changeDue = tenderedAmount - total;
+    final changeDueCents = tenderedCents - remainingCents;
 
     final shouldContinue = await showDialog<bool>(
       context: context,
@@ -152,9 +177,11 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
         return AlertDialog(
           title: const Text('Change Due'),
           content: Text(
-            'Total: ${settings.formatMoney(total)}\n'
-            'Cash Received: ${settings.formatMoney(tenderedAmount)}\n'
-            'Change Due: ${settings.formatMoney(changeDue)}',
+            'Total: ${settings.formatMoney(_cartTotal)}\n'
+            'Already Paid: ${settings.formatMoney(_amountPaid)}\n'
+            'Balance Due: ${settings.formatMoney(remainingCents / 100)}\n'
+            'Cash Received: ${settings.formatMoney(tenderedCents / 100)}\n'
+            'Change Due: ${settings.formatMoney(changeDueCents / 100)}',
           ),
           actions: [
             TextButton(
@@ -172,7 +199,59 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
 
     if (shouldContinue != true) return;
 
-    await _completeSale('Cash');
+    setState(() {
+      _cashPaidCents += remainingCents;
+      _currentInputCents = 0;
+    });
+
+    await _completeSale();
+  }
+
+  Future<void> _handleCardPayment() async {
+    if (cart.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Add items to the basket first')),
+      );
+      return;
+    }
+
+    final remainingCents = _remainingBalanceCents;
+    if (remainingCents <= 0) {
+      await _completeSale();
+      return;
+    }
+
+    final cardCents = _hasAmount ? _currentInputCents : remainingCents;
+    final settings = AppSettingsStore.instance;
+
+    if (cardCents > remainingCents) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Card amount is more than the remaining balance of ${settings.formatMoney(remainingCents / 100)}',
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _cardPaidCents += cardCents;
+      _currentInputCents = 0;
+    });
+
+    if (_remainingBalanceCents > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Partial card accepted. Remaining: ${settings.formatMoney(_remainingBalance)}',
+          ),
+        ),
+      );
+      return;
+    }
+
+    await _completeSale();
   }
 
   Future<void> _showLoginDialog() async {
@@ -369,6 +448,8 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
 
     setState(() {
       _currentInputCents = 0;
+      _cashPaidCents = 0;
+      _cardPaidCents = 0;
       _selectedCartIndex = null;
       cart.clear();
       _barcodeController.clear();
@@ -392,6 +473,8 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
 
   void addItem(String name, double price) {
     setState(() {
+      _cashPaidCents = 0;
+      _cardPaidCents = 0;
       final existingIndex = cart.indexWhere(
         (item) => item.name == name && item.price == price,
       );
@@ -408,6 +491,8 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
 
   void _increaseQuantity(int index) {
     setState(() {
+      _cashPaidCents = 0;
+      _cardPaidCents = 0;
       cart[index].quantity++;
       _selectedCartIndex = index;
     });
@@ -415,6 +500,8 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
 
   void _decreaseQuantity(int index) {
     setState(() {
+      _cashPaidCents = 0;
+      _cardPaidCents = 0;
       cart[index].quantity--;
 
       if (cart[index].quantity <= 0) {
@@ -428,6 +515,8 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
 
   void _removeCartItem(int index) {
     setState(() {
+      _cashPaidCents = 0;
+      _cardPaidCents = 0;
       cart.removeAt(index);
       _selectedCartIndex = null;
     });
@@ -533,10 +622,31 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     );
   }
 
-  Future<void> _completeSale(String paymentMethod) async {
+  String _buildPaymentMethodLabel() {
+    if (_cashPaidCents > 0 && _cardPaidCents > 0) {
+      return 'Split (Card: ${_cardPaidAmount.toStringAsFixed(2)}, Cash: ${_cashPaidAmount.toStringAsFixed(2)})';
+    }
+
+    if (_cardPaidCents > 0) return 'Card';
+    if (_cashPaidCents > 0) return 'Cash';
+    return 'Unknown';
+  }
+
+  Future<void> _completeSale() async {
     if (cart.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Add items to the basket first')),
+      );
+      return;
+    }
+
+    if (_remainingBalanceCents > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Balance still due: ${AppSettingsStore.instance.formatMoney(_remainingBalance)}',
+          ),
+        ),
       );
       return;
     }
@@ -547,6 +657,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     final vatBreakdown = _buildVatBreakdown(lineItems);
     final serverName = _loggedInUser.isEmpty ? 'Unknown Server' : _loggedInUser;
     final total = _cartTotal;
+    final paymentMethod = _buildPaymentMethodLabel();
 
     final sale = SaleRecord(
       id: saleId,
@@ -556,6 +667,8 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
       total: total,
       items: lineItems,
       vatBreakdown: vatBreakdown,
+      cashPaid: _cashPaidAmount,
+      cardPaid: _cardPaidAmount,
     );
     final receiptSettings = ReceiptSettingsStore.instance.getSettings();
     final receipt = ReceiptRecord(
@@ -574,10 +687,13 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
 
     await SalesStore.instance.saveSale(sale);
     await SalesStore.instance.saveReceipt(receipt);
+    await ProductStore.instance.reduceStockForSaleItems(lineItems);
 
     setState(() {
       cart.clear();
       _currentInputCents = 0;
+      _cashPaidCents = 0;
+      _cardPaidCents = 0;
       _selectedCartIndex = null;
       _barcodeController.clear();
     });
@@ -756,6 +872,19 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
+                  if (_cashPaidCents > 0 || _cardPaidCents > 0) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      'Paid: ${AppSettingsStore.instance.formatMoney(_amountPaid)}',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                    Text(
+                      'Balance: ${AppSettingsStore.instance.formatMoney(_remainingBalance)}',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -882,7 +1011,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
                           child: ActionButton(
                             label: 'CARD',
                             color: Colors.indigo,
-                            onTap: () => _completeSale('Card'),
+                            onTap: _handleCardPayment,
                           ),
                         ),
                         const SizedBox(height: 12),

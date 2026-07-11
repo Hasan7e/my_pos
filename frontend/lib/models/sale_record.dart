@@ -26,6 +26,12 @@ class SaleRecord extends HiveObject {
   @HiveField(6)
   Map<String, double> vatBreakdown;
 
+  @HiveField(7)
+  double? cashPaid;
+
+  @HiveField(8)
+  double? cardPaid;
+
   SaleRecord({
     required this.id,
     required this.createdAt,
@@ -34,5 +40,7 @@ class SaleRecord extends HiveObject {
     required this.total,
     required this.items,
     required this.vatBreakdown,
+    this.cashPaid,
+    this.cardPaid,
   });
 }

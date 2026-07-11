@@ -24,13 +24,15 @@ class SaleRecordAdapter extends TypeAdapter<SaleRecord> {
       total: (fields[4] as num).toDouble(),
       items: (fields[5] as List).cast<SaleLineItem>(),
       vatBreakdown: (fields[6] as Map).cast<String, double>(),
+      cashPaid: (fields[7] as num?)?.toDouble(),
+      cardPaid: (fields[8] as num?)?.toDouble(),
     );
   }
 
   @override
   void write(BinaryWriter writer, SaleRecord obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(9)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -44,7 +46,11 @@ class SaleRecordAdapter extends TypeAdapter<SaleRecord> {
       ..writeByte(5)
       ..write(obj.items)
       ..writeByte(6)
-      ..write(obj.vatBreakdown);
+      ..write(obj.vatBreakdown)
+      ..writeByte(7)
+      ..write(obj.cashPaid)
+      ..writeByte(8)
+      ..write(obj.cardPaid);
   }
 
   @override
