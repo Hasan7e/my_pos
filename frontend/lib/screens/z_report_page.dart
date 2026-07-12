@@ -3,13 +3,16 @@ import 'package:hive_ce/hive.dart';
 import 'package:my_pos/data/app_settings_store.dart';
 import 'package:my_pos/data/report_store.dart';
 import 'package:my_pos/data/sales_store.dart';
+import 'package:my_pos/models/app_user.dart';
 import 'package:my_pos/models/return_record.dart';
 import 'package:my_pos/models/sale_record.dart';
 import 'package:my_pos/models/z_report_record.dart';
 import 'package:my_pos/screens/z_report_print_page.dart';
 
 class ZReportPage extends StatelessWidget {
-  const ZReportPage({super.key});
+  final AppUser? currentUser;
+
+  const ZReportPage({super.key, this.currentUser});
 
   Future<void> _generateZReport(
     BuildContext context,
@@ -43,6 +46,7 @@ class ZReportPage extends StatelessWidget {
     final reportRecord = report.toRecord(
       id: closedAt.microsecondsSinceEpoch.toString(),
       closedAt: closedAt,
+      closedBy: currentUser?.username ?? 'Manager',
     );
 
     await ReportStore.instance.saveZReport(reportRecord);
@@ -57,7 +61,11 @@ class ZReportPage extends StatelessWidget {
   }
 
   void _openPrintPreview(BuildContext context, _ZReportData report) {
-    final previewRecord = report.toRecord(id: 'Preview', closedAt: null);
+    final previewRecord = report.toRecord(
+      id: 'Preview',
+      closedAt: null,
+      closedBy: currentUser?.username ?? 'Manager',
+    );
 
     Navigator.push(
       context,
@@ -352,18 +360,27 @@ class _ZReportData {
   double get averageSale =>
       transactionCount == 0 ? 0 : totalSales / transactionCount;
 
-  ZReportRecord toRecord({required String id, DateTime? closedAt}) {
+  ZReportRecord toRecord({
+    required String id,
+    DateTime? closedAt,
+    String? closedBy,
+  }) {
     return ZReportRecord(
       id: id,
       startTime: startTime,
       endTime: endTime,
       closedAt: closedAt,
       transactionCount: transactionCount,
-      itemsSold: itemsSold - itemsReturned,
+      itemsSold: itemsSold,
       totalSales: totalSales,
       cashTotal: cashTotal,
       cardTotal: cardTotal,
       vatBreakdown: vatBreakdown,
+      grossSales: grossSales,
+      refundTotal: refundTotal,
+      returnCount: returnCount,
+      itemsReturned: itemsReturned,
+      closedBy: closedBy,
     );
   }
 

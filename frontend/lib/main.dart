@@ -263,6 +263,24 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) {
+        void submitLogin() {
+          if (!formKey.currentState!.validate()) return;
+
+          final user = UserStore.instance.authenticate(
+            username: usernameController.text.trim(),
+            password: passwordController.text.trim(),
+          );
+
+          if (user == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Invalid username or password')),
+            );
+            return;
+          }
+
+          Navigator.of(context).pop(_LoginResult(user: user));
+        }
+
         return AlertDialog(
           title: const Text('Login'),
           content: Form(
@@ -289,6 +307,8 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
                   TextFormField(
                     controller: passwordController,
                     obscureText: true,
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => submitLogin(),
                     decoration: const InputDecoration(
                       labelText: 'Password',
                       border: OutlineInputBorder(),
@@ -322,28 +342,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
               },
               child: const Text('Create Account'),
             ),
-            FilledButton(
-              onPressed: () {
-                if (!formKey.currentState!.validate()) return;
-
-                final user = UserStore.instance.authenticate(
-                  username: usernameController.text.trim(),
-                  password: passwordController.text.trim(),
-                );
-
-                if (user == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Invalid username or password'),
-                    ),
-                  );
-                  return;
-                }
-
-                Navigator.of(context).pop(_LoginResult(user: user));
-              },
-              child: const Text('Login'),
-            ),
+            FilledButton(onPressed: submitLogin, child: const Text('Login')),
           ],
         );
       },

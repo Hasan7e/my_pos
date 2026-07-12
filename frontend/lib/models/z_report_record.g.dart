@@ -27,13 +27,18 @@ class ZReportRecordAdapter extends TypeAdapter<ZReportRecord> {
       cashTotal: (fields[7] as num).toDouble(),
       cardTotal: (fields[8] as num).toDouble(),
       vatBreakdown: (fields[9] as Map).cast<String, double>(),
+      grossSales: (fields[10] as num?)?.toDouble(),
+      refundTotal: (fields[11] as num?)?.toDouble(),
+      returnCount: (fields[12] as num?)?.toInt(),
+      itemsReturned: (fields[13] as num?)?.toInt(),
+      closedBy: fields[14] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, ZReportRecord obj) {
     writer
-      ..writeByte(10)
+      ..writeByte(15)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -53,7 +58,17 @@ class ZReportRecordAdapter extends TypeAdapter<ZReportRecord> {
       ..writeByte(8)
       ..write(obj.cardTotal)
       ..writeByte(9)
-      ..write(obj.vatBreakdown);
+      ..write(obj.vatBreakdown)
+      ..writeByte(10)
+      ..write(obj.grossSales)
+      ..writeByte(11)
+      ..write(obj.refundTotal)
+      ..writeByte(12)
+      ..write(obj.returnCount)
+      ..writeByte(13)
+      ..write(obj.itemsReturned)
+      ..writeByte(14)
+      ..write(obj.closedBy);
   }
 
   @override

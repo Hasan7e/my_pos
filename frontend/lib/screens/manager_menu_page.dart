@@ -44,7 +44,9 @@ class ManagerMenuPage extends StatelessWidget {
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const SalesReportPage()),
+            MaterialPageRoute(
+              builder: (_) => SalesReportPage(currentUser: currentUser),
+            ),
           );
         },
       ),

@@ -1,7 +1,10 @@
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:my_pos/data/app_settings_store.dart';
 import 'package:my_pos/models/receipt_record.dart';
 import 'package:my_pos/data/receipt_settings_store.dart';
+import 'package:my_pos/services/receipt_pdf_service.dart';
+import 'package:printing/printing.dart';
 
 class ReceiptViewPage extends StatelessWidget {
   final ReceiptRecord receipt;
@@ -13,6 +16,63 @@ class ReceiptViewPage extends StatelessWidget {
     this.askToPrint = false,
   });
 
+  String get _fileName => 'receipt-${receipt.id}.pdf';
+
+  Future<void> _print(BuildContext context) async {
+    try {
+      await Printing.layoutPdf(
+        name: _fileName,
+        onLayout: (_) => ReceiptPdfService.buildPdf(receipt),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to open the print dialog.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _savePdf(BuildContext context) async {
+    try {
+      final bytes = await ReceiptPdfService.buildPdf(receipt);
+      final location = await getSaveLocation(
+        suggestedName: _fileName,
+        acceptedTypeGroups: const [
+          XTypeGroup(label: 'PDF documents', extensions: ['pdf']),
+        ],
+      );
+      if (location == null) return;
+
+      await XFile.fromData(
+        bytes,
+        mimeType: 'application/pdf',
+        name: _fileName,
+      ).saveTo(location.path);
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to save the PDF.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _sharePdf(BuildContext context) async {
+    try {
+      await Printing.sharePdf(
+        bytes: await ReceiptPdfService.buildPdf(receipt),
+        filename: _fileName,
+      );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to share the PDF.')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final receiptSettings = ReceiptSettingsStore.instance.getSettings();
@@ -23,11 +83,7 @@ class ReceiptViewPage extends StatelessWidget {
         centerTitle: true,
         actions: [
           IconButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Printing receipt...')),
-              );
-            },
+            onPressed: () => _print(context),
             icon: const Icon(Icons.print),
             tooltip: 'Print Receipt',
           ),
@@ -121,6 +177,24 @@ class ReceiptViewPage extends StatelessWidget {
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ],
+                  const SizedBox(height: 20),
+                  FilledButton.icon(
+                    onPressed: () => _print(context),
+                    icon: const Icon(Icons.print),
+                    label: const Text('Print / Thermal Printer'),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => _savePdf(context),
+                    icon: const Icon(Icons.picture_as_pdf_outlined),
+                    label: const Text('Save PDF'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    onPressed: () => _sharePdf(context),
+                    icon: const Icon(Icons.share_outlined),
+                    label: const Text('Share PDF'),
+                  ),
                   if (askToPrint) ...[
                     const SizedBox(height: 24),
                     const Divider(),
@@ -144,13 +218,11 @@ class ReceiptViewPage extends StatelessWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: FilledButton(
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Printing receipt...'),
-                                ),
-                              );
-                              Navigator.pop(context);
+                            onPressed: () async {
+                              await _print(context);
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                              }
                             },
                             child: const Text('Print Copy'),
                           ),

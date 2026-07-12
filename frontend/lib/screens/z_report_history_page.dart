@@ -34,7 +34,7 @@ class ZReportHistoryPage extends StatelessWidget {
                 child: ListTile(
                   title: Text('Z Report ${report.id}'),
                   subtitle: Text(
-                    '${reportDate.toLocal()} | ${report.transactionCount} transactions',
+                    '${appSettings.formatDateTime(reportDate)} | ${report.transactionCount} transactions | ${report.effectiveReturnCount} returns',
                   ),
                   trailing: Text(
                     appSettings.formatMoney(report.totalSales),

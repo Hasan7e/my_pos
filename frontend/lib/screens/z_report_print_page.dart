@@ -1,12 +1,72 @@
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:my_pos/data/app_settings_store.dart';
 import 'package:my_pos/data/receipt_settings_store.dart';
 import 'package:my_pos/models/z_report_record.dart';
+import 'package:my_pos/services/z_report_pdf_service.dart';
+import 'package:printing/printing.dart';
 
 class ZReportPrintPage extends StatelessWidget {
   final ZReportRecord report;
 
   const ZReportPrintPage({super.key, required this.report});
+
+  String get _fileName => 'z-report-${report.id}.pdf';
+
+  Future<void> _print(BuildContext context) async {
+    try {
+      await Printing.layoutPdf(
+        name: _fileName,
+        onLayout: (_) => ZReportPdfService.buildPdf(report),
+      );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to open the print dialog.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _savePdf(BuildContext context) async {
+    try {
+      final bytes = await ZReportPdfService.buildPdf(report);
+      final location = await getSaveLocation(
+        suggestedName: _fileName,
+        acceptedTypeGroups: const [
+          XTypeGroup(label: 'PDF documents', extensions: ['pdf']),
+        ],
+      );
+      if (location == null) return;
+
+      await XFile.fromData(
+        bytes,
+        mimeType: 'application/pdf',
+        name: _fileName,
+      ).saveTo(location.path);
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to save the PDF.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _sharePdf(BuildContext context) async {
+    try {
+      await Printing.sharePdf(
+        bytes: await ZReportPdfService.buildPdf(report),
+        filename: _fileName,
+      );
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to share the PDF.')),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,11 +79,7 @@ class ZReportPrintPage extends StatelessWidget {
         centerTitle: true,
         actions: [
           IconButton(
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Printing Z Report...')),
-              );
-            },
+            onPressed: () => _print(context),
             icon: const Icon(Icons.print),
             tooltip: 'Print Z Report',
           ),
@@ -69,7 +125,17 @@ class ZReportPrintPage extends StatelessWidget {
                     Text(
                       'Closed: ${appSettings.formatDateTime(report.closedAt!)}',
                     ),
+                  if (report.closedBy?.trim().isNotEmpty == true)
+                    Text('Closed by: ${report.closedBy}'),
                   const Divider(height: 24),
+                  _ThermalReportRow(
+                    label: 'Gross Sales',
+                    value: appSettings.formatMoney(report.effectiveGrossSales),
+                  ),
+                  _ThermalReportRow(
+                    label: 'Refunds',
+                    value: appSettings.formatMoney(report.effectiveRefundTotal),
+                  ),
                   _ThermalReportRow(
                     label: 'Net Sales',
                     value: appSettings.formatMoney(report.totalSales),
@@ -80,8 +146,16 @@ class ZReportPrintPage extends StatelessWidget {
                     value: report.transactionCount.toString(),
                   ),
                   _ThermalReportRow(
-                    label: 'Items Sold Net',
+                    label: 'Items Sold',
                     value: report.itemsSold.toString(),
+                  ),
+                  _ThermalReportRow(
+                    label: 'Returns',
+                    value: report.effectiveReturnCount.toString(),
+                  ),
+                  _ThermalReportRow(
+                    label: 'Items Returned',
+                    value: report.effectiveItemsReturned.toString(),
                   ),
                   _ThermalReportRow(
                     label: 'Average Sale',
@@ -120,13 +194,21 @@ class ZReportPrintPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
                   FilledButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Printing Z Report...')),
-                      );
-                    },
+                    onPressed: () => _print(context),
                     icon: const Icon(Icons.print),
-                    label: const Text('Print Copy'),
+                    label: const Text('Print / Thermal Printer'),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => _savePdf(context),
+                    icon: const Icon(Icons.picture_as_pdf_outlined),
+                    label: const Text('Save PDF'),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    onPressed: () => _sharePdf(context),
+                    icon: const Icon(Icons.share_outlined),
+                    label: const Text('Share PDF'),
                   ),
                 ],
               ),

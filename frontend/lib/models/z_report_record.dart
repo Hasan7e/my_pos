@@ -34,6 +34,21 @@ class ZReportRecord extends HiveObject {
   @HiveField(9)
   Map<String, double> vatBreakdown;
 
+  @HiveField(10)
+  double? grossSales;
+
+  @HiveField(11)
+  double? refundTotal;
+
+  @HiveField(12)
+  int? returnCount;
+
+  @HiveField(13)
+  int? itemsReturned;
+
+  @HiveField(14)
+  String? closedBy;
+
   ZReportRecord({
     required this.id,
     required this.startTime,
@@ -45,8 +60,21 @@ class ZReportRecord extends HiveObject {
     required this.cashTotal,
     required this.cardTotal,
     required this.vatBreakdown,
+    this.grossSales,
+    this.refundTotal,
+    this.returnCount,
+    this.itemsReturned,
+    this.closedBy,
   });
 
   double get averageSale =>
       transactionCount == 0 ? 0 : totalSales / transactionCount;
+
+  double get effectiveGrossSales => grossSales ?? totalSales;
+
+  double get effectiveRefundTotal => refundTotal ?? 0;
+
+  int get effectiveReturnCount => returnCount ?? 0;
+
+  int get effectiveItemsReturned => itemsReturned ?? 0;
 }

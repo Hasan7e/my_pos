@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:my_pos/models/app_user.dart';
 import 'package:my_pos/screens/x_report_page.dart';
 import 'package:my_pos/screens/z_report_history_page.dart';
 import 'package:my_pos/screens/z_report_page.dart';
 
 class SalesReportPage extends StatelessWidget {
-  const SalesReportPage({super.key});
+  final AppUser? currentUser;
+
+  const SalesReportPage({super.key, this.currentUser});
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +30,9 @@ class SalesReportPage extends StatelessWidget {
         onTap: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (_) => const ZReportPage()),
+            MaterialPageRoute(
+              builder: (_) => ZReportPage(currentUser: currentUser),
+            ),
           );
         },
       ),
