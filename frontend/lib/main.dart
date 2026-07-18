@@ -1,4 +1,4 @@
-import 'dart:io' show Directory;
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
@@ -6,7 +6,6 @@ import 'package:my_pos/models/product.dart';
 import 'package:my_pos/screens/signup_page.dart';
 import 'package:my_pos/screens/settings_page.dart';
 import 'package:my_pos/data/product_store.dart';
-import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:my_pos/data/app_settings_store.dart';
 import 'package:my_pos/data/sales_store.dart';
@@ -23,6 +22,7 @@ import 'package:my_pos/data/receipt_settings_store.dart';
 import 'package:my_pos/models/return_line_item.dart';
 import 'package:my_pos/models/return_record.dart';
 import 'package:my_pos/models/z_report_record.dart';
+import 'package:window_manager/window_manager.dart';
 
 // this is the code that only works for desktop or mac for saving data
 /*
@@ -47,6 +47,21 @@ Future<void> main() async {
 //new code for web and desktop
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (!kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux)) {
+    await windowManager.ensureInitialized();
+    await windowManager.waitUntilReadyToShow(
+      const WindowOptions(
+        size: Size(1180, 800),
+        minimumSize: Size(1040, 720),
+        center: true,
+      ),
+      () async {
+        await windowManager.show();
+        await windowManager.focus();
+      },
+    );
+  }
 
   if (kIsWeb) {
     await Hive.initFlutter();
@@ -715,7 +730,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final showSideBySide = screenWidth >= 900;
+    final showSideBySide = screenWidth >= 1040;
 
     return Scaffold(
       appBar: AppBar(
@@ -850,207 +865,246 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
   }
 
   Widget _buildPosKeypadPanel() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('Amount', style: Theme.of(context).textTheme.labelLarge),
-                  const SizedBox(height: 8),
-                  Text(
-                    _displayValue,
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact =
+            constraints.maxWidth < 320 || constraints.maxHeight < 500;
+        final panelPadding = isCompact ? 12.0 : 16.0;
+        final spacing = isCompact ? 8.0 : 12.0;
+
+        return Card(
+          child: Padding(
+            padding: EdgeInsets.all(panelPadding),
+            child: Column(
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isCompact ? 12 : 16,
+                    vertical: isCompact ? 12 : 20,
                   ),
-                  if (_cashPaidCents > 0 || _cardPaidCents > 0) ...[
-                    const SizedBox(height: 10),
-                    Text(
-                      'Paid: ${AppSettingsStore.instance.formatMoney(_amountPaid)}',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                    Text(
-                      'Balance: ${AppSettingsStore.instance.formatMoney(_remainingBalance)}',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'Amount',
+                        style: Theme.of(context).textTheme.labelLarge,
                       ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: Column(
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: GridView.count(
-                            crossAxisCount: 3,
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 12,
-                            childAspectRatio: 1.15,
-                            physics: const NeverScrollableScrollPhysics(),
-                            children: [
-                              KeypadButton(
-                                label: '7',
-                                onTap: () => _appendDigit('7'),
-                              ),
-                              KeypadButton(
-                                label: '8',
-                                onTap: () => _appendDigit('8'),
-                              ),
-                              KeypadButton(
-                                label: '9',
-                                onTap: () => _appendDigit('9'),
-                              ),
-                              KeypadButton(
-                                label: '4',
-                                onTap: () => _appendDigit('4'),
-                              ),
-                              KeypadButton(
-                                label: '5',
-                                onTap: () => _appendDigit('5'),
-                              ),
-                              KeypadButton(
-                                label: '6',
-                                onTap: () => _appendDigit('6'),
-                              ),
-                              KeypadButton(
-                                label: '1',
-                                onTap: () => _appendDigit('1'),
-                              ),
-                              KeypadButton(
-                                label: '2',
-                                onTap: () => _appendDigit('2'),
-                              ),
-                              KeypadButton(
-                                label: '3',
-                                onTap: () => _appendDigit('3'),
-                              ),
-                              KeypadButton(
-                                label: '0',
-                                onTap: () => _appendDigit('0'),
-                              ),
-                              KeypadButton(
-                                label: '00',
-                                onTap: _appendDoubleZero,
-                              ),
-                              KeypadButton(
-                                label: '⌫',
-                                onTap: _backspaceInput,
-                                isAccent: true,
-                              ),
-                            ],
-                          ),
+                      SizedBox(height: isCompact ? 4 : 8),
+                      Text(
+                        _displayValue,
+                        style: Theme.of(context).textTheme.headlineMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              fontSize: isCompact ? 22 : null,
+                            ),
+                      ),
+                      if (_cashPaidCents > 0 || _cardPaidCents > 0) ...[
+                        SizedBox(height: isCompact ? 6 : 10),
+                        Text(
+                          'Paid: ${AppSettingsStore.instance.formatMoney(_amountPaid)}',
+                          style: Theme.of(context).textTheme.bodyMedium,
                         ),
-                        const SizedBox(height: 12),
-                        Expanded(
-                          flex: 2,
-                          child: GridView.count(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 12,
-                            crossAxisSpacing: 12,
-                            childAspectRatio: 1.4,
-                            physics: const NeverScrollableScrollPhysics(),
-                            children: [
-                              ActionButton(
-                                label: '10',
-                                color: Colors.teal,
-                                onTap: () => _setCashNote('10'),
-                              ),
-                              ActionButton(
-                                label: '20',
-                                color: Colors.teal,
-                                onTap: () => _setCashNote('20'),
-                              ),
-                              ActionButton(
-                                label: '50',
-                                color: Colors.teal,
-                                onTap: () => _setCashNote('50'),
-                              ),
-                              ActionButton(
-                                label: '100',
-                                color: Colors.teal,
-                                onTap: () => _setCashNote('100'),
-                              ),
-                            ],
-                          ),
+                        Text(
+                          'Balance: ${AppSettingsStore.instance.formatMoney(_remainingBalance)}',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                       ],
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      children: [
-                        Expanded(
-                          child: ActionButton(
-                            label: 'TENDER',
-                            color: Colors.blueGrey,
-                            onTap: _handleTender,
-                          ),
+                ),
+                SizedBox(height: spacing),
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: GridView.count(
+                                crossAxisCount: 3,
+                                mainAxisSpacing: spacing,
+                                crossAxisSpacing: spacing,
+                                childAspectRatio: isCompact ? 1 : 1.15,
+                                physics: const NeverScrollableScrollPhysics(),
+                                children: [
+                                  KeypadButton(
+                                    label: '7',
+                                    onTap: () => _appendDigit('7'),
+                                    isCompact: isCompact,
+                                  ),
+                                  KeypadButton(
+                                    label: '8',
+                                    onTap: () => _appendDigit('8'),
+                                    isCompact: isCompact,
+                                  ),
+                                  KeypadButton(
+                                    label: '9',
+                                    onTap: () => _appendDigit('9'),
+                                    isCompact: isCompact,
+                                  ),
+                                  KeypadButton(
+                                    label: '4',
+                                    onTap: () => _appendDigit('4'),
+                                    isCompact: isCompact,
+                                  ),
+                                  KeypadButton(
+                                    label: '5',
+                                    onTap: () => _appendDigit('5'),
+                                    isCompact: isCompact,
+                                  ),
+                                  KeypadButton(
+                                    label: '6',
+                                    onTap: () => _appendDigit('6'),
+                                    isCompact: isCompact,
+                                  ),
+                                  KeypadButton(
+                                    label: '1',
+                                    onTap: () => _appendDigit('1'),
+                                    isCompact: isCompact,
+                                  ),
+                                  KeypadButton(
+                                    label: '2',
+                                    onTap: () => _appendDigit('2'),
+                                    isCompact: isCompact,
+                                  ),
+                                  KeypadButton(
+                                    label: '3',
+                                    onTap: () => _appendDigit('3'),
+                                    isCompact: isCompact,
+                                  ),
+                                  KeypadButton(
+                                    label: '0',
+                                    onTap: () => _appendDigit('0'),
+                                    isCompact: isCompact,
+                                  ),
+                                  KeypadButton(
+                                    label: '00',
+                                    onTap: _appendDoubleZero,
+                                    isCompact: isCompact,
+                                  ),
+                                  KeypadButton(
+                                    label: '⌫',
+                                    onTap: _backspaceInput,
+                                    isAccent: true,
+                                    isCompact: isCompact,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(height: spacing),
+                            Expanded(
+                              flex: 2,
+                              child: GridView.count(
+                                crossAxisCount: 2,
+                                mainAxisSpacing: spacing,
+                                crossAxisSpacing: spacing,
+                                childAspectRatio: isCompact ? 1.15 : 1.4,
+                                physics: const NeverScrollableScrollPhysics(),
+                                children: [
+                                  ActionButton(
+                                    label: '10',
+                                    color: Colors.teal,
+                                    onTap: () => _setCashNote('10'),
+                                    isCompact: isCompact,
+                                  ),
+                                  ActionButton(
+                                    label: '20',
+                                    color: Colors.teal,
+                                    onTap: () => _setCashNote('20'),
+                                    isCompact: isCompact,
+                                  ),
+                                  ActionButton(
+                                    label: '50',
+                                    color: Colors.teal,
+                                    onTap: () => _setCashNote('50'),
+                                    isCompact: isCompact,
+                                  ),
+                                  ActionButton(
+                                    label: '100',
+                                    color: Colors.teal,
+                                    onTap: () => _setCashNote('100'),
+                                    isCompact: isCompact,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 12),
-                        Expanded(
-                          child: ActionButton(
-                            label: 'CARD',
-                            color: Colors.indigo,
-                            onTap: _handleCardPayment,
-                          ),
+                      ),
+                      SizedBox(width: spacing),
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          children: [
+                            Expanded(
+                              child: ActionButton(
+                                label: 'TENDER',
+                                color: Colors.blueGrey,
+                                onTap: _handleTender,
+                                isCompact: isCompact,
+                              ),
+                            ),
+                            SizedBox(height: spacing),
+                            Expanded(
+                              child: ActionButton(
+                                label: 'CARD',
+                                color: Colors.indigo,
+                                onTap: _handleCardPayment,
+                                isCompact: isCompact,
+                              ),
+                            ),
+                            SizedBox(height: spacing),
+                            Expanded(
+                              child: ActionButton(
+                                label: 'CLEAR',
+                                color: Colors.orange,
+                                onTap: _clearInput,
+                                isCompact: isCompact,
+                              ),
+                            ),
+                            SizedBox(height: spacing),
+                            Expanded(
+                              child: ActionButton(
+                                label: 'CANCEL',
+                                color: Colors.redAccent,
+                                onTap: _cancelSale,
+                                isCompact: isCompact,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 12),
-                        Expanded(
-                          child: ActionButton(
-                            label: 'CLEAR',
-                            color: Colors.orange,
-                            onTap: _clearInput,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Expanded(
-                          child: ActionButton(
-                            label: 'CANCEL',
-                            color: Colors.redAccent,
-                            onTap: _cancelSale,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                SizedBox(height: spacing),
+                SizedBox(
+                  width: double.infinity,
+                  height: 64,
+                  child: ActionButton(
+                    label: 'CASH',
+                    color: Colors.green,
+                    onTap: _handleCashPayment,
+                    isLarge: true,
+                    isCompact: isCompact,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              height: 64,
-              child: ActionButton(
-                label: 'CASH',
-                color: Colors.green,
-                onTap: _handleCashPayment,
-                isLarge: true,
-              ),
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -1096,12 +1150,14 @@ class KeypadButton extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   final bool isAccent;
+  final bool isCompact;
 
   const KeypadButton({
     super.key,
     required this.label,
     required this.onTap,
     this.isAccent = false,
+    this.isCompact = false,
   });
 
   @override
@@ -1117,9 +1173,10 @@ class KeypadButton extends StatelessWidget {
         child: Center(
           child: Text(
             label,
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: isCompact ? 18 : null,
+            ),
           ),
         ),
       ),
@@ -1132,6 +1189,7 @@ class ActionButton extends StatelessWidget {
   final Color color;
   final VoidCallback onTap;
   final bool isLarge;
+  final bool isCompact;
 
   const ActionButton({
     super.key,
@@ -1139,6 +1197,7 @@ class ActionButton extends StatelessWidget {
     required this.color,
     required this.onTap,
     this.isLarge = false,
+    this.isCompact = false,
   });
 
   @override
@@ -1150,8 +1209,8 @@ class ActionButton extends StatelessWidget {
           backgroundColor: color,
           foregroundColor: Colors.white,
           padding: EdgeInsets.symmetric(
-            vertical: isLarge ? 18 : 14,
-            horizontal: 12,
+            vertical: isLarge ? (isCompact ? 14 : 18) : (isCompact ? 8 : 14),
+            horizontal: isCompact ? 6 : 12,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
@@ -1161,7 +1220,7 @@ class ActionButton extends StatelessWidget {
           label,
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: isLarge ? 20 : 16,
+            fontSize: isLarge ? (isCompact ? 18 : 20) : (isCompact ? 13 : 16),
             fontWeight: FontWeight.bold,
           ),
         ),
