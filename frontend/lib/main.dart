@@ -159,6 +159,9 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
       return;
     }
 
+    if (!await _requireLogin()) return;
+    if (!mounted) return;
+
     final remainingCents = _remainingBalanceCents;
     if (remainingCents <= 0) {
       await _completeSale();
@@ -213,6 +216,7 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     );
 
     if (shouldContinue != true) return;
+    if (!mounted) return;
 
     setState(() {
       _cashPaidCents += remainingCents;
@@ -229,6 +233,9 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
       );
       return;
     }
+
+    if (!await _requireLogin()) return;
+    if (!mounted) return;
 
     final remainingCents = _remainingBalanceCents;
     if (remainingCents <= 0) {
@@ -378,14 +385,11 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     }
   }
 
-  Future<void> _requireLoginThenRun(VoidCallback action) async {
-    if (!_isLoggedIn) {
-      await _showLoginDialog();
-    }
+  Future<bool> _requireLogin() async {
+    if (_isLoggedIn) return true;
 
-    if (_isLoggedIn) {
-      action();
-    }
+    await _showLoginDialog();
+    return mounted && _isLoggedIn;
   }
 
   void _logout() {
