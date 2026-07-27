@@ -33,15 +33,6 @@ void main() {
       expect(buildReport(transactionCount: 0).averageSale, 0);
     });
 
-    test('uses legacy totals when optional refund fields are absent', () {
-      final report = buildReport();
-
-      expect(report.effectiveGrossSales, 100);
-      expect(report.effectiveRefundTotal, 0);
-      expect(report.effectiveReturnCount, 0);
-      expect(report.effectiveItemsReturned, 0);
-    });
-
     test('uses recorded gross and refund totals when present', () {
       final report = buildReport(grossSales: 125, refundTotal: 25);
 

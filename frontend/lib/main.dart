@@ -22,6 +22,7 @@ import 'package:my_pos/data/receipt_settings_store.dart';
 import 'package:my_pos/models/return_line_item.dart';
 import 'package:my_pos/models/return_record.dart';
 import 'package:my_pos/models/z_report_record.dart';
+import 'package:my_pos/services/payment_calculator.dart';
 import 'package:window_manager/window_manager.dart';
 
 // this is the code that only works for desktop or mac for saving data
@@ -135,8 +136,11 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
   int get _cartTotalCents => (_cartTotal * 100).round();
 
   int get _remainingBalanceCents {
-    final remaining = _cartTotalCents - _cashPaidCents - _cardPaidCents;
-    return remaining < 0 ? 0 : remaining;
+    return PaymentCalculator.remainingBalanceCents(
+      cartTotalCents: _cartTotalCents,
+      cashPaidCents: _cashPaidCents,
+      cardPaidCents: _cardPaidCents,
+    );
   }
 
   int? _selectedCartIndex;
@@ -246,7 +250,10 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     final cardCents = _hasAmount ? _currentInputCents : remainingCents;
     final settings = AppSettingsStore.instance;
 
-    if (cardCents > remainingCents) {
+    if (!PaymentCalculator.isCardPaymentValid(
+      cardAmountCents: cardCents,
+      remainingBalanceCents: remainingCents,
+    )) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
