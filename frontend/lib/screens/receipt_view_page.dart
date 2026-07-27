@@ -6,7 +6,7 @@ import 'package:my_pos/data/receipt_settings_store.dart';
 import 'package:my_pos/services/receipt_pdf_service.dart';
 import 'package:printing/printing.dart';
 
-class ReceiptViewPage extends StatelessWidget {
+class ReceiptViewPage extends StatefulWidget {
   final ReceiptRecord receipt;
   final bool askToPrint;
 
@@ -16,13 +16,51 @@ class ReceiptViewPage extends StatelessWidget {
     this.askToPrint = false,
   });
 
-  String get _fileName => 'receipt-${receipt.id}.pdf';
+  @override
+  State<ReceiptViewPage> createState() => _ReceiptViewPageState();
+}
+
+class _ReceiptViewPageState extends State<ReceiptViewPage> {
+  @override
+  void initState() {
+    super.initState();
+    if (widget.askToPrint) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _showPrintPrompt());
+    }
+  }
+
+  Future<void> _showPrintPrompt() async {
+    final shouldKeepReceiptOpen = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Print Receipt?'),
+        content: const Text('Would the customer like a receipt?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('No'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Yes'),
+          ),
+        ],
+      ),
+    );
+
+    if (mounted && shouldKeepReceiptOpen != true) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  String get _fileName => 'receipt-${widget.receipt.id}.pdf';
 
   Future<void> _print(BuildContext context) async {
     try {
       await Printing.layoutPdf(
         name: _fileName,
-        onLayout: (_) => ReceiptPdfService.buildPdf(receipt),
+        onLayout: (_) => ReceiptPdfService.buildPdf(widget.receipt),
       );
     } catch (_) {
       if (context.mounted) {
@@ -35,7 +73,7 @@ class ReceiptViewPage extends StatelessWidget {
 
   Future<void> _savePdf(BuildContext context) async {
     try {
-      final bytes = await ReceiptPdfService.buildPdf(receipt);
+      final bytes = await ReceiptPdfService.buildPdf(widget.receipt);
       final location = await getSaveLocation(
         suggestedName: _fileName,
         acceptedTypeGroups: const [
@@ -61,7 +99,7 @@ class ReceiptViewPage extends StatelessWidget {
   Future<void> _sharePdf(BuildContext context) async {
     try {
       await Printing.sharePdf(
-        bytes: await ReceiptPdfService.buildPdf(receipt),
+        bytes: await ReceiptPdfService.buildPdf(widget.receipt),
         filename: _fileName,
       );
     } catch (_) {
@@ -99,25 +137,25 @@ class ReceiptViewPage extends StatelessWidget {
               child: ListView(
                 children: [
                   Text(
-                    receipt.shopName,
+                    widget.receipt.shopName,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
                   const SizedBox(height: 8),
-                  Text(receipt.shopAddress, textAlign: TextAlign.center),
+                  Text(widget.receipt.shopAddress, textAlign: TextAlign.center),
                   Text(
-                    'VAT No: ${receipt.vatNumber}',
+                    'VAT No: ${widget.receipt.vatNumber}',
                     textAlign: TextAlign.center,
                   ),
                   const Divider(height: 24),
-                  Text('Receipt No: ${receipt.id}'),
-                  Text('Sale ID: ${receipt.saleId}'),
+                  Text('Receipt No: ${widget.receipt.id}'),
+                  Text('Sale ID: ${widget.receipt.saleId}'),
                   Text(
-                    'Date/Time: ${appSettings.formatDateTime(receipt.createdAt)}',
+                    'Date/Time: ${appSettings.formatDateTime(widget.receipt.createdAt)}',
                   ),
-                  Text('Server: ${receipt.serverName}'),
+                  Text('Server: ${widget.receipt.serverName}'),
                   const Divider(height: 24),
-                  ...receipt.items.map(
+                  ...widget.receipt.items.map(
                     (item) => Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: Row(
@@ -145,20 +183,20 @@ class ReceiptViewPage extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        appSettings.formatMoney(receipt.total),
+                        appSettings.formatMoney(widget.receipt.total),
                         style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  _ReceiptPaymentSummary(receipt: receipt),
+                  _ReceiptPaymentSummary(receipt: widget.receipt),
                   const SizedBox(height: 16),
                   const Text(
                     'VAT Breakdown',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
-                  ...receipt.vatBreakdown.entries.map(
+                  ...widget.receipt.vatBreakdown.entries.map(
                     (entry) => Padding(
                       padding: const EdgeInsets.only(bottom: 4),
                       child: Row(
@@ -195,41 +233,6 @@ class ReceiptViewPage extends StatelessWidget {
                     icon: const Icon(Icons.share_outlined),
                     label: const Text('Share PDF'),
                   ),
-                  if (askToPrint) ...[
-                    const SizedBox(height: 24),
-                    const Divider(),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Would the customer like a printed copy?',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                            },
-                            child: const Text('No Copy'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: FilledButton(
-                            onPressed: () async {
-                              await _print(context);
-                              if (context.mounted) {
-                                Navigator.pop(context);
-                              }
-                            },
-                            child: const Text('Print Copy'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
                 ],
               ),
             ),

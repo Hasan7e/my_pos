@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +6,7 @@ import 'package:hive_ce/hive.dart';
 import 'package:my_pos/models/app_config.dart';
 import 'package:my_pos/models/product.dart';
 import 'package:my_pos/models/quick_sale_config.dart';
+import 'package:my_pos/screens/product_form_page.dart';
 
 import 'package:my_pos/main.dart';
 
@@ -89,5 +89,20 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('€7.00'), findsNWidgets(2));
+  });
+
+  testWidgets('FT03: product form rejects incomplete data', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const MaterialApp(home: ProductFormPage()));
+
+    await tester.tap(find.byType(FilledButton));
+    await tester.pump();
+
+    expect(find.text('Enter barcode'), findsOneWidget);
+    expect(find.text('Enter product name'), findsOneWidget);
+    expect(find.text('Enter a valid sale price'), findsOneWidget);
+    expect(find.text('Enter a valid VAT rate'), findsOneWidget);
+    expect(Hive.box<Product>('products').isEmpty, isTrue);
   });
 }

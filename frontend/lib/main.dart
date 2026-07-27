@@ -637,7 +637,6 @@ class _SalesDashboardPageState extends State<SalesDashboardPage> {
     );
   } */
 
-  // new code to show receipt view page after sale completion with the receipt details
   Future<void> _offerReceipt(ReceiptRecord receipt) async {
     await Navigator.push(
       context,
